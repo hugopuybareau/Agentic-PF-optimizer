@@ -19,5 +19,3 @@ def get_secrets():
 
     secret = get_secret_value_response['SecretString']
     return json.loads(secret)
-
-

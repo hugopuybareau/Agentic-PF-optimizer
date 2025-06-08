@@ -1,0 +1,25 @@
+version: "3.8"
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/backend # edit code on host and auto-reload
+    depends_on:
+      - chroma
+    environment:
+      - CHROMA_HOST=chroma
+      - CHROMA_PORT=8000
+
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/.chroma/index # persistent
+
+volumes:
+  chroma_data:

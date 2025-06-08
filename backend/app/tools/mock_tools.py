@@ -1,6 +1,6 @@
 # backend/test/mock_tools.py
 
-from ..app.models.assets import Asset
+from ..models.assets import Asset
 
 def mock_search_tool(asset: Asset):
     # Demo: only mock news for stocks and cryptos

@@ -40,6 +40,8 @@ uvicorn app.main:app --reload
 
 ## Contributing
 
-Feature branches: feature/<feature-name>
-Pull requests required for all changes to main
-Keep backend and frontend as separate services/images
+Feature branches: feature/<feature-name>. 
+Pull requests required for all changes to main. 
+Keep backend and frontend as separate services/images. 
+Commit format :  "<type>(optional-scope): <short summary>".  
+Types : **feat**: A new feature, **fix**: A bug fix, docs: Documentation only changes, **style**: Changes that do not affect meaning (white-space, formatting), **refactor**: A code change that neither fixes a bug nor adds a feature, **perf**: A code change that improves performance, **test**: Adding or correcting tests, **build**: Changes that affect the build system or external dependencies, **chore**: Routine tasks (updating deps, etc.).

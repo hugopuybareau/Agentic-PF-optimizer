@@ -4,3 +4,4 @@ env_wolfy/
 # __pycache__ files 
 **/__pycache__/
 *.py[cod]
+.DS_store

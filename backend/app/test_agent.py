@@ -36,7 +36,7 @@ async def test_agent():
         logger.info("✅ Agent initialized successfully")
         
         # Test portfolio analysis
-        logger.info("\n📈 Running portfolio analysis...")
+        logger.info("📈 Running portfolio analysis...")
         result = agent.analyze_portfolio(test_portfolio, task_type="analyze")
         
         if result["success"]:
@@ -85,17 +85,16 @@ def test_news_search():
 
 def test_vector_store():
     logger.info("\n🗄️  Testing vector store...")
-    
+
     try:
         from app.agent.vector_store import VectorStore
-        
+
         vector_store = VectorStore()
         logger.info("✅ Vector store initialized successfully")
-        
-        # Test connection
-        vector_store.client.heartbeat()
-        logger.info("✅ ChromaDB connection healthy")
-        
+
+        collections = vector_store.client.get_collections()
+        logger.info(f"✅ Qdrant connection healthy, found collections: {collections}")
+
     except Exception as e:
         logger.info(f"❌ Vector store test failed: {e}")
 

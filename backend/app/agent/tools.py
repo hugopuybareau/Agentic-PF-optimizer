@@ -143,7 +143,7 @@ class ClassificationTool:
                 3. RELEVANCE: Score from 0-1 (how relevant this is to the specific asset)
                 4. RISK_TYPE: market_risk, regulatory_risk, operational_risk, credit_risk, or other
 
-                Return your analysis in JSON format:
+                Reply **only** with a valid JSON object as described below, and nothing else:
                 {
                     "sentiment": "positive/negative/neutral",
                     "impact": "high/medium/low", 

@@ -1,5 +1,4 @@
 # Core
-
 uvicorn[standard]
 fastapi
 pydantic
@@ -8,8 +7,10 @@ langchain-community
 langchain-openai
 requests
 
-# Dev
-chromadb
+# Vector DB
+qdrant-client
+
+# Dev / Embeddings
 langchain-huggingface
 langchain.tools
 langgraph

@@ -8,24 +8,22 @@ services:
     volumes:
       - ./backend:/backend
     depends_on:
-      - chroma
+      - qdrant
     environment:
       - LOG_CFG=/backend/logs/logging.yml
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
     env_file:
       - .env
 
-  chroma:
-    image: chromadb/chroma:latest
+  qdrant:
+    image: qdrant/qdrant:latest
     ports:
-      - "8001:8000"
+      - "6333:6333"
     volumes:
-      - chroma_data:/chroma/.chroma/index # persistent
+      - qdrant_data:/qdrant/storage
     environment:
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8000
-      - CHROMA_SERVER_GRPC_PORT=50051
+      - QDRANT__SERVICE__HOST=0.0.0.0
 
 volumes:
-  chroma_data:
+  qdrant_data:

@@ -2,7 +2,7 @@
 
 set -e
 echo "Starting docker-compose services..."
-docker-compose up -d
+docker-compose up -d --build
 
 # clean old log files
 if [ -f all-services.log ]; then

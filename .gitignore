@@ -12,3 +12,6 @@ env_python/
 # Logs
 *.log
 all-services.log
+
+# conf
+.vsocde/

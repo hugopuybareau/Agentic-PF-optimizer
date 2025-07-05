@@ -8,3 +8,7 @@ env_python/
 **/__pycache__/
 *.py[cod]
 .DS_store
+
+# Logs
+*.log
+all-services.log

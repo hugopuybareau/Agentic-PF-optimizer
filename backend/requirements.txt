@@ -7,3 +7,10 @@ langchain
 langchain-community
 langchain-openai
 requests
+
+# Dev
+chromadb
+langchain-huggingface
+langchain.tools
+langgraph
+sentence-transformers

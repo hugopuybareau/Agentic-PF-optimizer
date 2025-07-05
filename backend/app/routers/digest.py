@@ -1,36 +1,147 @@
-# backend/app/endpoints/digest
+# backend/app/routers/digest.py
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from typing import Optional
+import logging
 
 from ..models.portfolio import PortfolioRequest
-from ..tools.mock_tools import mock_classify_tool, mock_search_tool, mock_summarize_tool
+from ..agent.graph import PortfolioAgent
+
+logger = logging.getLogger(__name__)
+
+portfolio_agent = None
+
+def get_portfolio_agent():
+    global portfolio_agent
+    if portfolio_agent is None:
+        portfolio_agent = PortfolioAgent()
+    return portfolio_agent
 
 digest_router = APIRouter()
 
 @digest_router.post("/digest")
 async def run_digest(request: PortfolioRequest):
-    digest = {}
-    for asset in request.portfolio.assets:
-        news = mock_search_tool(asset)
-        classified_news = [mock_classify_tool(item) for item in news]
-        summary = mock_summarize_tool(classified_news)
-        digest_key = ""
-        if asset.type == "stock":
-            digest_key = f"stock:{asset.ticker}"
-        elif asset.type == "crypto":
-            digest_key = f"crypto:{asset.symbol}"
-        elif asset.type == "real_estate":
-            digest_key = f"real_estate:{asset.address}"
-        elif asset.type == "mortgage":
-            digest_key = f"mortgage:{asset.lender}"
-        elif asset.type == "cash":
-            digest_key = f"cash:{asset.currency}"
-        else:
-            digest_key = "unknown"
-        digest[digest_key] = {
-            "asset": asset,
-            "news": classified_news,
-            "summary": summary,
+    try:
+        agent = get_portfolio_agent()
+        
+        result = agent.analyze_portfolio(
+            portfolio=request.portfolio,
+            task_type="digest"
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=f"Analysis failed: {result.get('error', 'Unknown error')}")
+        
+        return {
+            "success": True,
+            "digest": {
+                "summary": result["response"],
+                "recommendations": result["recommendations"],
+                "risk_alerts": result["risk_alerts"],
+                "metadata": {
+                    "assets_analyzed": result["assets_analyzed"],
+                    "execution_time": result["execution_time"],
+                    "errors": result["errors"]
+                }
+            }
         }
         
-    return {"digest": digest}
+    except Exception as e:
+        logger.error(f"Digest generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@digest_router.post("/analyze")
+async def analyze_portfolio(request: PortfolioRequest, query: Optional[str] = None):
+    try:
+        agent = get_portfolio_agent()
+        
+        result = agent.analyze_portfolio(
+            portfolio=request.portfolio,
+            task_type="analyze",
+            user_query=query
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=f"Analysis failed: {result.get('error', 'Unknown error')}")
+        
+        return {
+            "success": True,
+            "analysis": result["response"],
+            "recommendations": result["recommendations"],
+            "risk_alerts": result["risk_alerts"],
+            "execution_time": result["execution_time"]
+        }
+        
+    except Exception as e:
+        logger.error(f"Portfolio analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@digest_router.post("/alerts")
+async def get_portfolio_alerts(request: PortfolioRequest):
+    try:
+        agent = get_portfolio_agent()
+        
+        result = agent.get_portfolio_alerts(request.portfolio)
+        
+        if not result["success"]:
+            raise HTTPException(status_code=500, detail=f"Alert generation failed: {result.get('error', 'Unknown error')}")
+        
+        return {
+            "success": True,
+            "alerts": result["risk_alerts"],
+            "summary": result["response"],
+            "urgent_count": len(result["risk_alerts"])
+        }
+        
+    except Exception as e:
+        logger.error(f"Alert generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@digest_router.post("/schedule-digest")
+async def schedule_digest(request: PortfolioRequest, background_tasks: BackgroundTasks):
+    try:
+        def generate_background_digest():
+            agent = get_portfolio_agent()
+            result = agent.create_scheduled_digest(request.portfolio)
+            logger.info(f"Background digest completed: {result.get('assets_analyzed', 0)} assets analyzed")
+        
+        background_tasks.add_task(generate_background_digest)
+        
+        return {
+            "success": True,
+            "message": "Digest generation scheduled",
+            "status": "processing"
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to schedule digest: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@digest_router.get("/health")
+async def agent_health():
+    try:
+        agent = get_portfolio_agent()
+        
+        # Test vector store connection
+        vector_health = True
+        try:
+            agent.vector_store.client.heartbeat()
+        except:
+            vector_health = False
+        
+        return {
+            "agent_initialized": agent is not None,
+            "vector_store_healthy": vector_health,
+            "components": {
+                "news_search": agent.news_search_tool is not None,
+                "classification": agent.classification_tool is not None,
+                "analysis": agent.analysis_tool is not None,
+                "summarizer": agent.summarizer_tool is not None
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "healthy": False,
+            "error": str(e)
+        }

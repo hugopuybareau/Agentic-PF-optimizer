@@ -1,23 +1,27 @@
 # backend/app/main.py
 
-import uvicorn
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 
 from .routers.digest import digest_router
+from logs.config import setup_logging
+
+setup_logging()
 
 app = FastAPI(
-    title="My Portfolio analyzer",
-    description="aller maxence quoi",
+    title="Agentic Portfolio Optimizer",
+    description="AI-powered portfolio analysis and optimization using LangGraph agents",
+    version="0.1",
     debug=True
 )
 
-# CORS middleware
+# cors
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://localhost:8080",
 ]
 
 app.add_middleware(
@@ -28,7 +32,30 @@ app.add_middleware(
     allow_credentials=True,
 )
 
-app.include_router(digest_router)
+app.include_router(digest_router, prefix="/api", tags=["portfolio"])
 
-if __name__ == "__main__":
-    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
+@app.get("/")
+async def root():
+    return {
+        "message": "Agentic Portfolio Optimizer API",
+        "version": "0.1",
+        "status": "running",
+        "endpoints": {
+            "digest": "/api/digest",
+            "analyze": "/api/analyze", 
+            "alerts": "/api/alerts",
+            "health": "/api/health"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "portfolio-optimizer-backend"
+    }
+
+@app.on_event("startup")
+def startup():
+    logger = logging.getLogger(__name__)
+    logger.info("App startup ok")

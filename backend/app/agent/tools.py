@@ -165,18 +165,35 @@ class ClassificationTool:
                     content=news_item.snippet
                 )
             )
-            
-            classification = json.loads(response.content)
-            news_item.sentiment = classification['sentiment']
-            news_item.impact = classification['impact']
-            news_item.relevance_score = classification['relevance_score']
-            
-            logger.debug(f"Classified news: {news_item.title[:50]}... - {classification['sentiment']}/{classification['impact']}")
+
+            try:
+                classification = json.loads(response.content)
+            except Exception as e:
+                logger.error(f"Could not parse LLM response as JSON: {response.content}")
+                classification = {}
+
+            sentiment = classification.get('sentiment')
+            if not isinstance(sentiment, str) or sentiment not in ["positive", "negative", "neutral"]:
+                sentiment = "neutral"
+            impact = classification.get('impact')
+            if not isinstance(impact, str) or impact not in ["high", "medium", "low"]:
+                impact = "low"
+            relevance_score = classification.get('relevance_score')
+            try:
+                relevance_score = float(relevance_score)
+                if not (0.0 <= relevance_score <= 1.0):
+                    relevance_score = 0.5
+            except Exception:
+                relevance_score = 0.5
+
+            news_item.sentiment = sentiment
+            news_item.impact = impact
+            news_item.relevance_score = relevance_score
+            logger.debug(f"Classified news: {news_item.title[:50]}... - {sentiment}/{impact}/{relevance_score}")
             return news_item
-            
+
         except Exception as e:
             logger.error(f"Classification failed: {e}")
-            # Return with default values
             news_item.sentiment = "neutral"
             news_item.impact = "low"
             news_item.relevance_score = 0.5

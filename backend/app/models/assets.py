@@ -1,7 +1,9 @@
 # backend/app/models/assets.py
 
+from typing import Literal, Union
+
 from pydantic import BaseModel, Field
-from typing import List, Union, Optional, Literal
+
 
 class Stock(BaseModel):
     type: Literal["stock"] = "stock"
@@ -22,7 +24,7 @@ class Mortgage(BaseModel):
     type: Literal["mortgage"] = "mortgage"
     lender: str
     balance: float
-    property_address: Optional[str] = None
+    property_address: str | None = None
 
 class Cash(BaseModel):
     type: Literal["cash"] = "cash"

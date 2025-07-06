@@ -1,16 +1,26 @@
 # backend/app/agent/vector_store.py
 
-import os
 import logging
+import os
 import uuid
-
-from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue, Range, MatchAny
+from qdrant_client.http.models import (
+    Condition,  # Add this import
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchAny,
+    MatchValue,
+    PointStruct,
+    Range,
+    VectorParams,
+)
+
 from .state import NewsItem
+from .utils import clean_value
 
 logger = logging.getLogger(__name__)
 
@@ -48,18 +58,11 @@ class VectorStore:
             logger.error(f"Failed to initialize vector store: {e}")
             raise
 
-    @staticmethod
-    def _clean_value(val):
-        if isinstance(val, (str, int, float, bool)): return val
-        elif val is None: return ""
-        elif isinstance(val, dict): return val.get("label") or str(val)
-        else: return str(val)
-
-    def store_news_items(self, news_items: List[NewsItem], asset_key: str):
+    def store_news_items(self, news_items: list[NewsItem], asset_key: str):
         try:
             documents = []
             points = []
-            for i, item in enumerate(news_items):
+            for item in news_items:
                 doc_text = f"Title: {item.title}\nContent: {item.snippet}"
                 documents.append(doc_text)
                 metadata = {
@@ -73,9 +76,7 @@ class VectorStore:
                     "relevance_score": item.relevance_score or 0.0,
                     "stored_at": float(datetime.now().timestamp())
                 }
-                metadata = {k: VectorStore._clean_value(v) for k, v in metadata.items()}
-                timestamp = int(datetime.now().timestamp() * 1000)
-                # point_id = f"{asset_key}_{timestamp}_{i}"
+                metadata = {k: clean_value(v) for k, v in metadata.items()}
                 point_id = str(uuid.uuid4())
                 points.append(
                     PointStruct(
@@ -92,12 +93,12 @@ class VectorStore:
             raise
 
     def search_relevant_news(
-        self, 
-        query: str, 
-        asset_keys: Optional[List[str]] = None,
+        self,
+        query: str,
+        asset_keys: list[str] | None = None,
         days_back: int = 7,
         limit: int = 10
-    ) -> List[Dict]:
+    ) -> list[dict]:
         try:
             query_embedding = self.embeddings.embed_query(query)
             cutoff_ts = (datetime.now() - timedelta(days=days_back)).timestamp()
@@ -127,7 +128,7 @@ class VectorStore:
             )
             formatted_results = []
             for point in result:
-                metadata = point.payload
+                metadata = point.payload or {}
                 doc = f"Title: {metadata.get('title', '')}\nContent: {metadata.get('content', '')}"
                 formatted_results.append({
                     "document": doc,
@@ -141,7 +142,7 @@ class VectorStore:
             logger.error(f"Failed to search news: {e}")
             return []
 
-    def store_analysis_result(self, analysis_result: Dict, portfolio_hash: str):
+    def store_analysis_result(self, analysis_result: dict, portfolio_hash: str):
         try:
             doc_text = (
                 f"Analysis: {analysis_result.get('summary', '')}\n"
@@ -154,7 +155,7 @@ class VectorStore:
                 "risk_level": analysis_result.get('risk_level'),
                 "confidence": analysis_result.get('confidence', 0.0)
             }
-            metadata = {k: VectorStore._clean_value(v) for k, v in metadata.items()}
+            metadata = {k: clean_value(v) for k, v in metadata.items()}
             analysis_id = str(uuid.uuid4())
             point = PointStruct(
                 id=analysis_id,
@@ -166,17 +167,17 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Failed to store analysis result: {e}")
 
-    def get_portfolio_history(self, portfolio_hash: str, days_back: int = 30) -> List[Dict]:
+    def get_portfolio_history(self, portfolio_hash: str, days_back: int = 30) -> list[dict]:
         try:
-            cutoff_date = (datetime.now() - timedelta(days=days_back)).isoformat()
-            filters = [
+            cutoff_ts = (datetime.now() - timedelta(days=days_back)).timestamp()
+            filters: list[Condition] = [
                 FieldCondition(
                     key="portfolio_hash",
                     match=MatchValue(value=portfolio_hash)
                 ),
                 FieldCondition(
                     key="timestamp",
-                    range=Range(gte=cutoff_date)
+                    range=Range(gte=cutoff_ts)
                 )
             ]
             result = self.client.scroll(

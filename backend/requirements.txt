@@ -2,16 +2,19 @@
 uvicorn[standard]
 fastapi
 pydantic
+requests
+
+# vDB
+qdrant-client
+
+# AI
 langchain
 langchain-community
 langchain-openai
-requests
-
-# Vector DB
-qdrant-client
-
-# Dev / Embeddings
 langchain-huggingface
 langchain.tools
 langgraph
 sentence-transformers
+
+# Dev
+sqlalchemy

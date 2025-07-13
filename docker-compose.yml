@@ -1,4 +1,5 @@
 services:
+
   backend:
     build:
       context: .
@@ -16,6 +17,17 @@ services:
     env_file:
       - .env
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend/:/frontend
+      - frontend_node_modules:/frontend/node_modules
+    restart: unless-stopped
+
   qdrant:
     image: qdrant/qdrant:latest
     ports:
@@ -27,3 +39,4 @@ services:
 
 volumes:
   qdrant_data:
+  frontend_node_modules:

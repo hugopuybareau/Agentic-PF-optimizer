@@ -4,8 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* platine.ai Design System - Scarce, Elegant, Serious */
-
 @layer base {
   :root {
     /* platine Color Palette - Black & Light Platinum */

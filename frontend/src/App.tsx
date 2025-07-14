@@ -15,6 +15,7 @@ import Alerts from "./pages/Alerts";
 import Features from "./pages/Features";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import Login from "@/pages/Login";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
                         <Route path="/alerts" element={<Alerts />} />
                         <Route path="/features" element={<Features />} />
                         <Route path="/contact" element={<Contact />} />
+                        <Route path="/login" element={<Login />} />
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
                     </Routes>

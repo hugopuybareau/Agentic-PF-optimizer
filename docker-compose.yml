@@ -1,5 +1,26 @@
 services:
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HOST=0.0.0.0
+
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypass
+      POSTGRES_DB: mydb
+    ports:
+      - "55432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
   backend:
     build:
       context: .
@@ -7,15 +28,18 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/backend
+      - ./backend/app:/backend/app
     depends_on:
       - qdrant
+      - postgres
     environment:
       - LOG_CFG=/backend/logs/logging.yml
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
     env_file:
       - .env
+    command: ["./wait-for-it.sh", "postgres:5432", "--", ".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
 
   frontend:
     build:
@@ -28,15 +52,7 @@ services:
       - frontend_node_modules:/frontend/node_modules
     restart: unless-stopped
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__HOST=0.0.0.0
-
 volumes:
   qdrant_data:
   frontend_node_modules:
+  pg_data:

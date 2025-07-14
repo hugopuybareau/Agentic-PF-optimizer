@@ -18,3 +18,5 @@ sentence-transformers
 
 # Dev
 sqlalchemy
+python-jose
+psycopg2-binary

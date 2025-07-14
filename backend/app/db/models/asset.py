@@ -3,10 +3,11 @@
 import uuid
 from datetime import datetime
 
-from db.base import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
+
+from ...db.base import Base
 
 
 class Asset(Base):
@@ -21,7 +22,7 @@ class Asset(Base):
     symbol = Column(String, nullable=False, index=True)
     asset_type = Column(String, nullable=False)
     quantity = Column(Numeric(precision=20, scale=8), nullable=False)
-    metadata = Column(JSONB, nullable=True)
+    meta = Column(JSONB, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -4,9 +4,11 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from .routers.digest import digest_router
 from logs.config import setup_logging
+
+from .db import models  # noqa: F401
+from .db.base import Base, engine
+from .routers.digest import digest_router
 
 setup_logging()
 
@@ -42,7 +44,7 @@ async def root():
         "status": "running",
         "endpoints": {
             "digest": "/api/digest",
-            "analyze": "/api/analyze", 
+            "analyze": "/api/analyze",
             "alerts": "/api/alerts",
             "health": "/api/health"
         }
@@ -57,5 +59,6 @@ async def health_check():
 
 @app.on_event("startup")
 def startup():
+    Base.metadata.create_all(bind=engine)
     logger = logging.getLogger(__name__)
     logger.info("App startup ok")

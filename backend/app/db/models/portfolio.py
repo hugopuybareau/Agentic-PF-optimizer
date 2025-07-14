@@ -3,10 +3,11 @@
 import uuid
 from datetime import datetime
 
-from db.base import Base
 from sqlalchemy import Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+from ...db.base import Base
 
 
 class Portfolio(Base):

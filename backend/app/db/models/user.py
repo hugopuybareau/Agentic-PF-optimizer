@@ -28,4 +28,4 @@ class User(Base):
     total_tokens_used = Column(Integer, default=0, nullable=False)
     preferred_language = Column(String, default="en", nullable=False)
 
-    portfolio = relationship("Portfolio", back_populates="owner", cascade="all, delete-orphan")
+    portfolios = relationship("Portfolio", back_populates="user", cascade="all, delete-orphan")

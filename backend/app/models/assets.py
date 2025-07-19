@@ -1,6 +1,6 @@
 # backend/app/models/assets.py
 
-from typing import Literal, Union
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -31,4 +31,4 @@ class Cash(BaseModel):
     currency: str = Field(default="USD")
     amount: float
 
-Asset = Union[Stock, Crypto, RealEstate, Mortgage, Cash]
+Asset = Stock | Crypto | RealEstate | Mortgage | Cash

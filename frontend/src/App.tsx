@@ -1,5 +1,7 @@
 // frontend/src/App.tsx
 
+import '@/lib/i18n';
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,13 +10,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/hooks/use-theme";
 
 // Pages
-import Landing from "./pages/Landing";
-import Portfolio from "./pages/Portfolio";
-import Chat from "./pages/Chat";
-import Alerts from "./pages/Alerts";
-import Features from "./pages/Features";
-import Contact from "./pages/Contact";
-import NotFound from "./pages/NotFound";
+import Landing from "@/pages/Landing";
+import Portfolio from "@/pages/Portfolio";
+import Chat from "@/pages/Chat";
+import Alerts from "@/pages/Alerts";
+import Features from "@/pages/Features";
+import Contact from "@/pages/Contact";
+import NotFound from "@/pages/NotFound";
 import Login from "@/pages/Login";
 
 const queryClient = new QueryClient();

@@ -1,0 +1,43 @@
+{
+    "alerts": {
+        "success": "Operation completed successfully!"
+    },
+    "contact": {
+        "title": "Contact Us"
+    },
+    "chat": {
+        "title": "Chat with Us"
+    },
+    "error": {
+        "occured": "An error occurred",
+        "unknown": "Unknown error"
+    },
+    "Features": {
+        "title": "Features"
+    },
+    "landing": {
+        "welcome": "Welcome to Agentic PF Optimizer"
+    },
+    "login": {
+        "account?": "Already have an account?",
+        "email": "Email",
+        "emailPlaceholder": "Enter your email",
+        "fullName": "Full Name (optional)",
+        "fullNamePlaceholder": "Enter your full name",
+        "logIn": "Login",
+        "noAccount?": "Don't have an account?",
+        "password": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "register": "Register",
+        "successLogin": "Login successful!",
+        "successRegister": "Account created, please log in!",
+        "username": "Username",
+        "usernamePlaceholder": "Enter your username"
+    },
+    "portfolio": {
+        "overview": "Portfolio Overview"
+    },
+    "notFound": {
+        "title": "Page Not Found"
+    }
+}

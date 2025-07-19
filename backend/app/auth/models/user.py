@@ -1,6 +1,7 @@
 # backend/app/auth/models/user.py
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
@@ -17,7 +18,7 @@ class UserLogin(BaseModel):
     password: str
 
 class UserResponse(BaseModel):
-    id: str
+    id: UUID
     email: str
     username: str
     full_name: str | None

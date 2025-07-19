@@ -22,17 +22,17 @@ from ..db.base import get_db
 from ..db.models import User
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/auth", tags=["authentication"])
+auth_router = APIRouter(prefix="/auth", tags=["authentication"])
 
 # Auth schemes
 _bearer = HTTPBearer()
 _bearer_optional = HTTPBearer(auto_error=False)
 
 # Supported language codes
-_SUPPORTED_LANGUAGES = {"en", "fr", "es", "de"}
+_SUPPORTED_LANGUAGES = {"en", "fr"}
 
 
-@router.post(
+@auth_router.post(
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
@@ -41,7 +41,6 @@ async def register(
     user_data: UserCreate,
     db: Annotated[Session, Depends(get_db)],
 ) -> UserResponse:
-    # Ensure email/username uniqueness
     existing = (
         db.query(User)
         .filter(
@@ -70,7 +69,7 @@ async def register(
     return new_user
 
 
-@router.post("/login", response_model=Token)
+@auth_router.post("/login", response_model=Token)
 async def login(
     user_credentials: UserLogin,
     db: Annotated[Session, Depends(get_db)],
@@ -104,7 +103,7 @@ async def login(
     )
 
 
-@router.post("/refresh", response_model=Token)
+@auth_router.post("/refresh", response_model=Token)
 async def refresh(
     token_data: TokenRefresh,
     db: Annotated[Session, Depends(get_db)],
@@ -125,7 +124,7 @@ async def refresh(
     )
 
 
-@router.get("/me", response_model=UserResponse)
+@auth_router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserResponse:
@@ -143,7 +142,7 @@ async def get_current_user_info(
 #     return {"message": "Successfully logged out"}
 
 
-@router.patch("/me/language", response_model=UserResponse)
+@auth_router.patch("/me/language", response_model=UserResponse)
 async def update_preferred_language(
     preferred_language: Annotated[str, Body(..., embed=True)],
     db: Annotated[Session, Depends(get_db)],

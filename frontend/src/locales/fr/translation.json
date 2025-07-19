@@ -1,0 +1,41 @@
+{
+    "alerts": {
+        "success": "Opération effectuée avec succès !"
+    },
+    "contact": {
+        "title": "Contactez-nous"
+    },
+    "chat": {
+        "title": "Discutez avec nous"
+    },
+    "error": {
+        "occured": "Une erreur est survenue",
+        "unknown": "Erreur inconnue"
+    },
+    "Features": {
+        "title": "Fonctionnalités"
+    },
+    "landing": {
+        "welcome": "Bienvenue sur Agentic PF Optimizer"
+    },
+    "login": {
+        "account?": "Vous avez déjà un compte ?",
+        "email": "Email",
+        "emailPlaceholder": "Entrez votre email",
+        "logIn": "Se connecter",
+        "noAccount?": "Vous n'avez pas de compte ?",
+        "password": "Mot de passe",
+        "passwordPlaceholder": "Entrez votre mot de passe",
+        "register": "S'inscrire",
+        "successLogin": "Connexion réussie !",
+        "successRegister": "Compte créé, veuillez vous connecter !",
+        "username": "Nom d'utilisateur",
+        "usernamePlaceholder": "Entrez votre nom d'utilisateur"
+    },
+    "portfolio": {
+        "overview": "Vue d'ensemble du portefeuille"
+    },
+    "notFound": {
+        "title": "Page introuvable"
+    }
+}

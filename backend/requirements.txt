@@ -20,3 +20,5 @@ sentence-transformers
 sqlalchemy
 python-jose
 psycopg2-binary
+passlib[bcrypt]
+pydantic[email]

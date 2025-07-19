@@ -15,10 +15,11 @@ langchain-huggingface
 langchain.tools
 langgraph
 sentence-transformers
-
-# Dev
 sqlalchemy
 python-jose
 psycopg2-binary
 passlib[bcrypt]
 pydantic[email]
+
+# Dev
+redis

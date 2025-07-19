@@ -9,7 +9,7 @@ from langgraph.graph import END, StateGraph
 from ..models.portfolio import Portfolio
 
 # from langchain.tools import ToolExecutor
-from .state import AgentState
+from .state.agent import AgentState
 from .tools import AnalysisTool, ClassificationTool, NewsSearchTool, PortfolioSummarizerTool
 from .vector_store import VectorStore
 
@@ -54,7 +54,7 @@ class PortfolioAgent:
         workflow.add_edge("create_digest", "store_results")
         workflow.add_edge("store_results", END)
 
-        return workflow.compile()
+        return workflow.compile() # type: ignore
 
     def _initialize_analysis(self, state: AgentState) -> AgentState:
         logger.info(f"Starting {state['task_type']} for portfolio with {len(state['portfolio'].assets)} assets")
@@ -126,7 +126,7 @@ class PortfolioAgent:
         return state
 
     def _should_search_news(self, state: AgentState) -> str:
-        vector_context = state.get("vector_context", {})
+        vector_context = state.get("vector_context") or {}
         found_items = vector_context.get("found_items", 0)
 
         if found_items >= len(state["assets_to_analyze"]) * 2:
@@ -323,7 +323,7 @@ class PortfolioAgent:
 
         return state
 
-    def analyze_portfolio(self, portfolio: Portfolio, task_type: str = "analyze", user_query: str = None) -> dict:
+    def analyze_portfolio(self, portfolio: Portfolio, task_type: str = "analyze", user_query: str = "") -> dict:
         try:
             initial_state = {
                 "portfolio": portfolio,
@@ -332,7 +332,7 @@ class PortfolioAgent:
                 "start_time": datetime.now().isoformat()
             }
 
-            result = self.graph.invoke(initial_state)
+            result = self.graph.invoke(initial_state) # type: ignore
 
             return {
                 "success": True,

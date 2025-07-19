@@ -10,7 +10,8 @@ from langchain_openai import AzureChatOpenAI
 from pydantic import SecretStr
 
 from ..models.assets import Asset
-from .state import AnalysisResult, NewsItem
+from .state.analysis import AnalysisResult
+from .state.news import NewsItem
 from .utils import safe_json_parse
 
 logger = logging.getLogger(__name__)

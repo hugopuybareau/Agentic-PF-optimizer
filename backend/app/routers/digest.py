@@ -4,7 +4,7 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from ..agent.graph import PortfolioAgent
+from ..agents.portfolio_agent import PortfolioAgent
 from ..models.portfolio import PortfolioRequest
 
 logger = logging.getLogger(__name__)

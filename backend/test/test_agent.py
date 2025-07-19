@@ -5,10 +5,11 @@ import logging
 import os
 import sys
 
-from app.agent.graph import PortfolioAgent
 from app.models.assets import Cash, Crypto, Stock
 from app.models.portfolio import Portfolio
 from logs.config import setup_logging
+
+from backend.app.agents.portfolio_agent import PortfolioAgent
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ def test_news_search():
     logger.info("\n🔍 Testing news search...")
 
     try:
-        from app.agent.tools import NewsSearchTool
+        from app.agents.tools import NewsSearchTool
         from app.models.assets import Stock
 
         news_tool = NewsSearchTool()
@@ -85,7 +86,7 @@ def test_vector_store():
     logger.info("\n🗄️  Testing vector store...")
 
     try:
-        from app.agent.vector_store import VectorStore
+        from app.agents.vector_store import VectorStore
 
         vector_store = VectorStore()
         logger.info("✅ Vector store initialized successfully")

@@ -1,34 +1,13 @@
 # backend/app/agent/state.py
 
 import operator
-from datetime import datetime
 from typing import Annotated, TypedDict
 
-from pydantic import BaseModel
+from ...models.assets import Asset
+from ...models.portfolio import Portfolio
+from .analysis import AnalysisResult
+from .news import NewsItem
 
-from ..models.assets import Asset
-from ..models.portfolio import Portfolio
-
-
-class NewsItem(BaseModel):
-    title: str
-    snippet: str
-    url: str
-    published_at: datetime | None = None
-    source: str | None = None
-    sentiment: str | None = None
-    impact: str | None = None
-    relevance_score: float | None = None
-    asset_related: str | None = None
-
-class AnalysisResult(BaseModel):
-    asset_key: str
-    asset: Asset
-    news_items: list[NewsItem]
-    sentiment_summary: str
-    risk_assessment: str
-    recommendations: list[str]
-    confidence_score: float
 
 class AgentState(TypedDict):
     portfolio: Portfolio

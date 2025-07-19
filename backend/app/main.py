@@ -9,6 +9,7 @@ from logs.config import setup_logging
 from .db import models  # noqa: F401
 from .db.base import Base, engine
 from .routers.auth import auth_router
+from .routers.chat import chat_router
 from .routers.digest import digest_router
 
 setup_logging()
@@ -23,6 +24,8 @@ app = FastAPI(
 # cors
 origins = [
     "http://localhost:8080",
+    # "http://localhost:3000",
+    # "http://localhost:5173",
 ]
 
 app.add_middleware(
@@ -33,6 +36,8 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# Include routers
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(digest_router, prefix="/api", tags=["portfolio"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 
@@ -43,6 +48,7 @@ async def root():
         "version": "0.1",
         "status": "running",
         "endpoints": {
+            "chat": "/api/chat/message",
             "digest": "/api/digest",
             "analyze": "/api/analyze",
             "alerts": "/api/alerts",

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import (
-    Condition,  # Add this import
+    Condition,
     Distance,
     FieldCondition,
     Filter,
@@ -19,7 +19,7 @@ from qdrant_client.http.models import (
     VectorParams,
 )
 
-from .state import NewsItem
+from .state.news import NewsItem
 from .utils import clean_value
 
 logger = logging.getLogger(__name__)

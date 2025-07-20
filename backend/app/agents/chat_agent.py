@@ -11,7 +11,7 @@ from pydantic import SecretStr
 
 from ..models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from ..models.portfolio import Portfolio
-from .session import get_session_storage
+from .session_storage import get_session_storage
 from .state.chat_state import ChatAgentState, ChatSession, PortfolioBuildingState
 from .utils import safe_json_parse
 

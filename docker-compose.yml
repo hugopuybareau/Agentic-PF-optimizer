@@ -1,5 +1,4 @@
 services:
-
   qdrant:
     image: qdrant/qdrant:latest
     ports:
@@ -21,6 +20,14 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -32,14 +39,15 @@ services:
     depends_on:
       - qdrant
       - postgres
+      - redis
     environment:
       - LOG_CFG=/backend/logs/logging.yml
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+      - ENVIRONMENT=production
     env_file:
       - .env
     command: ["./wait-for-it.sh", "postgres:5432", "--", ".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
 
   frontend:
     build:

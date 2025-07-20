@@ -77,11 +77,10 @@ class InMemorySessionStorage(SessionStorage):
 
 
 class RedisSessionStorage(SessionStorage):
-    """Redis-based session storage for production"""
 
     def __init__(self, redis_url: str | None = None, ttl_minutes: int = 60):
-        self.redis_url = redis_url or os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-        self.ttl = ttl_minutes * 60  # Convert to seconds
+        self.redis_url = redis_url or os.getenv('REDIS_URL')
+        self.ttl = ttl_minutes * 60
         self.key_prefix = "chat_session:"
 
         try:

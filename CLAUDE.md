@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Backend (Python/FastAPI)
-- **Start backend**: `cd backend && uvicorn app.main:app --reload` (dev mode)
-- **Install dependencies**: `cd backend && pip install -r requirements.txt`
+### Backend (Python/FastAPI with uv)
+- **Setup environment**: `cd backend && uv venv .venv && source .venv/bin/activate`
+- **Install dependencies**: `uv pip install -r requirements.txt`
+- **Start backend**: `uvicorn app.main:app --reload` (dev mode)
+- **Add new package**: `uv add package-name` or `uv add --dev package-name`
 - **Lint Python code**: `ruff check .` and `ruff format .` (use pyproject.toml config)
-- **Run backend tests**: `cd backend && python -m pytest test/`
+- **Run backend tests**: `python -m pytest test/`
 
 ### Frontend (React/Vite)
 - **Start frontend**: `cd frontend && npm run dev` (runs on default Vite port)
@@ -68,6 +70,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Environment Requirements
 - Python 3.13+ (backend uses Python 3.13 features)
+- **uv** (Python package manager) - faster than pip, used throughout the project
 - Node.js for frontend
 - Docker Desktop for full stack development
 - Azure OpenAI API key for chat functionality

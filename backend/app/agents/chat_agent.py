@@ -26,7 +26,6 @@ class ChatAgent:
             api_version="2025-01-01-preview",
             temperature=0.3
         )
-
         self.graph = self._build_graph()
         self.session_storage = get_session_storage()
 
@@ -60,9 +59,13 @@ class ChatAgent:
     def _classify_intent(self, state: ChatAgentState) -> ChatAgentState:
         """Classify user intent from their message"""
 
-        intent_prompt = ChatPromptTemplate.from_messages([
+        session = state["session"]
+
+        # Build conversation history
+        messages = [
             ("system", """You are a portfolio assistant helping users build their investment portfolio.
             Classify the user's intent into one of these categories:\n\n
+
             1. "add_asset" - User wants to add an asset (stock, crypto, real estate, etc.)
             2. "remove_asset" - User wants to remove an asset
             3. "modify_asset" - User wants to change quantity/details of existing asset
@@ -71,22 +74,31 @@ class ChatAgent:
             6. "ask_question" - General question about portfolio or investing
             7. "greeting" - Initial greeting or general conversation
             8. "unclear" - Intent is not clear\n\n
-            Return ONLY the intent category, nothing else."""),
-            ("human", "{message}")
-        ])
+
+            Consider the conversation history to understand context.
+            Return ONLY the intent category, nothing else.""")
+        ]
+
+        # Add recent conversation history (last 10 messages)
+        for msg in session.messages[-10:]:
+            if msg.role == "user":
+                messages.append(("human", msg.content))
+            else:
+                messages.append(("assistant", msg.content))
+
+        # Add current message
+        messages.append(("human", state["user_message"]))
+
+        intent_prompt = ChatPromptTemplate.from_messages(messages)
 
         try:
-            response = self.llm.invoke(
-                intent_prompt.format_messages(message=state["user_message"])
-            )
-            if isinstance(response.content, list):
-                intent_str = response.content[0] if response.content else ""
-            else:
-                intent_str = response.content
-            if isinstance(intent_str, str):
-                state["intent"] = intent_str.strip().lower()
-            else:
-                state["intent"] = "unclear"
+            response = self.llm.invoke(intent_prompt.format_messages())
+            # If response.content is a list, extract the first string element
+            intent_text = response.content
+            if isinstance(intent_text, list):
+                # Find the first string in the list
+                intent_text = next((item for item in intent_text if isinstance(item, str)), "")
+            state["intent"] = intent_text.strip().lower()
         except Exception as e:
             logger.error(f"Intent classification failed: {e}")
             state["intent"] = "unclear"
@@ -100,26 +112,42 @@ class ChatAgent:
             state["entities"] = {}
             return state
 
-        entity_prompt = ChatPromptTemplate.from_messages([
+        session = state["session"]
+
+        # Build messages with conversation history
+        messages = [
             ("system", """Extract investment details from the user message.
             Look for:
             - Asset type (stock, crypto, real_estate, mortgage, cash)
             - Asset identifier (ticker, symbol, address, etc.)
             - Quantity/amount/shares
             - Additional details (currency, lender, etc.)\n\n
+
+            Consider the conversation context to understand references like "it", "that", "the same", etc.\n\n
+
             Return a JSON object with extracted information.
             Example outputs:
             {"type": "stock", "ticker": "AAPL", "shares": 100}
             {"type": "crypto", "symbol": "BTC", "amount": 0.5}
             {"type": "real_estate", "address": "123 Main St, NYC", "value": 500000}\n\n
-            If information is missing, include what you found and mark missing fields as null."""),
-            ("human", "{message}")
-        ])
+
+            If information is missing, include what you found and mark missing fields as null.""")
+        ]
+
+        # Add recent conversation history for context
+        for msg in session.messages[-6:]:
+            if msg.role == "user":
+                messages.append(("human", msg.content))
+            else:
+                messages.append(("assistant", msg.content))
+
+        # Add current message
+        messages.append(("human", state["user_message"]))
+
+        entity_prompt = ChatPromptTemplate.from_messages(messages)
 
         try:
-            response = self.llm.invoke(
-                entity_prompt.format_messages(message=state["user_message"])
-            )
+            response = self.llm.invoke(entity_prompt.format_messages())
             entities = safe_json_parse(response.content)
             state["entities"] = entities
         except Exception as e:
@@ -134,6 +162,9 @@ class ChatAgent:
         session = state["session"]
         entities = state["entities"]
         intent = state["intent"]
+
+        # Handle context-aware references
+        entities = self._resolve_references(entities, session)
 
         if intent == "add_asset" and entities:
             try:
@@ -245,38 +276,64 @@ class ChatAgent:
         session = state["session"]
         intent = state["intent"]
 
-        response_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a friendly portfolio assistant helping users build their investment portfolio.\n\n
+        # Build conversation history
+        messages = [
+            ("system", """You are a friendly portfolio assistant helping users build their investment portfolio.
+
             Current portfolio state:
             {portfolio_state}\n\n
+
             User intent: {intent}
             Extracted entities: {entities}\n\n
+
             Guidelines:
             - Be conversational and helpful
+            - Reference previous conversation when relevant
             - If information is missing, ask for specific details
             - Confirm when assets are added/removed
             - Suggest common asset types if portfolio seems incomplete
-            - Keep responses concise but informative\n\n
-            Generate an appropriate response."""),
-            ("human", "{message}")
-        ])
+            - Keep responses concise but informative
+            - Remember what the user has already told you\n\n
+
+            Generate an appropriate response based on the conversation history.""")
+        ]
+
+        # Add conversation history
+        for msg in session.messages[-8:]:
+            if msg.role == "user":
+                messages.append(("human", msg.content))
+            else:
+                messages.append(("assistant", msg.content))
+
+        # Add current message
+        messages.append(("human", state["user_message"]))
 
         try:
             portfolio_summary = self._get_portfolio_summary(session.portfolio_state)
 
+            # Format the system message with current state
+            formatted_messages = []
+            for role, content in messages:
+                if role == "system":
+                    content = content.format(
+                        portfolio_state=portfolio_summary,
+                        intent=intent,
+                        entities=json.dumps(state["entities"])
+                    )
+                formatted_messages.append((role, content))
+
             response = self.llm.invoke(
-                response_prompt.format_messages(
-                    portfolio_state=portfolio_summary,
-                    intent=intent,
-                    entities=json.dumps(state["entities"]),
-                    message=state["user_message"]
-                )
+                ChatPromptTemplate.from_messages(formatted_messages).format_messages()
             )
 
-            if isinstance(response.content, list):
-                state["response"] = "\n".join(str(item) for item in response.content)
-            else:
-                state["response"] = str(response.content)
+            # Ensure response.content is always a string
+            content = response.content
+            if isinstance(content, list):
+                # Join list elements as string, or extract first string if possible
+                content = " ".join(str(item) for item in content if isinstance(item, str | dict))
+                if not isinstance(content, str):
+                    content = str(content)
+            state["response"] = content
 
             # Add UI hints based on context
             state["ui_hints"] = {
@@ -351,8 +408,35 @@ class ChatAgent:
             return identifier.lower() in asset.address.lower()
         elif isinstance(asset, Mortgage):
             return identifier.lower() in asset.lender.lower()
-
         return False
+
+    def _resolve_references(self, entities: dict, session: ChatSession) -> dict:
+        """Resolve context-aware references like 'the same amount', 'it', etc."""
+
+        # If user is continuing from previous asset discussion
+        if session.portfolio_state.current_asset_type and not entities.get("type"):
+            entities["type"] = session.portfolio_state.current_asset_type
+
+        # Check for references to previous amounts
+        if session.messages:
+            # Look for patterns like "the same" in recent context
+            recent_amounts = []
+            for msg in session.messages[-4:]:
+                if msg.role == "assistant":
+                    continue
+                # Extract numbers from recent messages
+                import re
+                numbers = re.findall(r'\b\d+(?:\.\d+)?\b', msg.content)
+                recent_amounts.extend(numbers)
+
+            # If entities missing amount but user said "the same", use recent amount
+            if not entities.get("amount") and not entities.get("shares") and recent_amounts:
+                if entities.get("type") == "stock":
+                    entities["shares"] = float(recent_amounts[-1])
+                else:
+                    entities["amount"] = float(recent_amounts[-1])
+
+        return entities
 
     def _get_portfolio_summary(self, portfolio_state: PortfolioBuildingState) -> str:
         """Generate human-readable portfolio summary"""

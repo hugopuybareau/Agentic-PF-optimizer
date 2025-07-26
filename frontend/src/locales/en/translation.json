@@ -22,7 +22,7 @@
         "account?": "Already have an account?",
         "email": "Email",
         "emailPlaceholder": "Enter your email",
-        "fullName": "Full Name (optional)",
+        "fullName": "Full Name",
         "fullNamePlaceholder": "Enter your full name",
         "logIn": "Login",
         "noAccount?": "Don't have an account?",
@@ -32,12 +32,17 @@
         "successLogin": "Login successful!",
         "successRegister": "Account created, please log in!",
         "username": "Username",
-        "usernamePlaceholder": "Enter your username"
+        "usernamePlaceholder": "Enter your username",
+        "welcomeBack": "Welcome back",
+        "createAccount": "Create your account",
+        "signInToContinue": "Sign in to your account to continue",
+        "joinUsToday": "Join us today and start optimizing your portfolio"
     },
     "portfolio": {
         "overview": "Portfolio Overview"
     },
     "notFound": {
         "title": "Page Not Found"
-    }
+    },
+    "close": "Close"
 }

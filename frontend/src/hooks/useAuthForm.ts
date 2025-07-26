@@ -93,8 +93,8 @@ export default function useAuthForm() {
                     full_name: '',
                 });
             }
-        } catch (err: any) {
-            setError(err.message || t('error.unknown'));
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : t('error.unknown'));
         } finally {
             setLoading(false);
         }

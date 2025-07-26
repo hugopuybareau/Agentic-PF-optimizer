@@ -1,11 +1,25 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTheme } from "@/hooks/use-theme";
+import { useLoginModal } from "@/hooks/useLoginModal";
+import LoginModal from "@/components/LoginModal";
+import useAuthForm from "@/hooks/useAuthForm";
 
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const location = useLocation();
+  const { isOpen, openModal, closeModal } = useLoginModal();
+  const {
+    mode,
+    form,
+    loading,
+    error,
+    success,
+    switchMode,
+    handleInputChange,
+    handleSubmit,
+  } = useAuthForm();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,6 +28,15 @@ export function Navigation() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Close modal on successful login
+  useEffect(() => {
+    if (success && mode === 'login') {
+      setTimeout(() => {
+        closeModal();
+      }, 1500); // Allow time to see success message
+    }
+  }, [success, mode, closeModal]);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -96,15 +119,29 @@ export function Navigation() {
             </button>
 
             {/* Log In */}
-            <Link
-              to="/login"
-              className="btn-ghost px-4 py-2 rounded-lg text-nav"
+            <button
+              onClick={openModal}
+              className="btn-ghost px-4 py-2 rounded-lg text-nav hover:bg-accent/50 transition-colors"
             >
               Log in
-            </Link>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isOpen}
+        onClose={closeModal}
+        mode={mode}
+        form={form}
+        loading={loading}
+        error={error}
+        success={success}
+        onInputChange={handleInputChange}
+        onSubmit={handleSubmit}
+        onSwitchMode={switchMode}
+      />
     </nav>
   );
 }

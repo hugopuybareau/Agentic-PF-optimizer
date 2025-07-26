@@ -22,6 +22,8 @@
         "account?": "Vous avez déjà un compte ?",
         "email": "Email",
         "emailPlaceholder": "Entrez votre email",
+        "fullName": "Nom complet",
+        "fullNamePlaceholder": "Entrez votre nom complet",
         "logIn": "Se connecter",
         "noAccount?": "Vous n'avez pas de compte ?",
         "password": "Mot de passe",
@@ -30,12 +32,17 @@
         "successLogin": "Connexion réussie !",
         "successRegister": "Compte créé, veuillez vous connecter !",
         "username": "Nom d'utilisateur",
-        "usernamePlaceholder": "Entrez votre nom d'utilisateur"
+        "usernamePlaceholder": "Entrez votre nom d'utilisateur",
+        "welcomeBack": "Bon retour",
+        "createAccount": "Créez votre compte",
+        "signInToContinue": "Connectez-vous à votre compte pour continuer",
+        "joinUsToday": "Rejoignez-nous aujourd'hui et commencez à optimiser votre portefeuille"
     },
     "portfolio": {
         "overview": "Vue d'ensemble du portefeuille"
     },
     "notFound": {
         "title": "Page introuvable"
-    }
+    },
+    "close": "Fermer"
 }

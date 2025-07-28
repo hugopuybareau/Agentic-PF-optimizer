@@ -26,7 +26,7 @@ def test_intent_classification():
         result = agent._classify_intent(state) # type: ignore
         assert result["intent"] == expected_intent
 
-def test_entity_extraction():
+def test_entity_extraction(mock_entity_extraction):
     agent = ChatAgent()
 
     test_cases = [
@@ -48,7 +48,7 @@ def test_entity_extraction():
             assert key in result["entities"]
             assert result["entities"][key] == value
 
-def test_portfolio_building():
+def test_portfolio_building(mock_entity_extraction):
     agent = ChatAgent()
     session_id = "test-session"
 

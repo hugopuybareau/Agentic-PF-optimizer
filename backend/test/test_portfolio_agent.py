@@ -15,6 +15,9 @@ setup_logging()
 logger = logging.getLogger(__name__)
 logger.info("Setting up Agentic Portfolio Optimizer tests...")
 
+import pytest
+
+@pytest.mark.asyncio
 async def test_agent():
     # Create a test portfolio
     test_portfolio = Portfolio(assets=[

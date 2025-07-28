@@ -11,7 +11,9 @@ def test_chat_flow():
     response = requests.post(f"{BASE_URL}/chat/message", json={
         "message": "Hi, I'd like to track my investments"
     })
+    assert response.status_code == 200, f"API returned {response.status_code}: {response.text}"
     data = response.json()
+    print(f"API Response: {data}")  # Debug line
     session_id = data["session_id"]
     print(f"Session started: {session_id}")
     print(f"Bot: {data['message']}\n")

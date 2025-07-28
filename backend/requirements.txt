@@ -23,3 +23,6 @@ pydantic[email]
 
 # Dev
 redis
+pytest
+pytest-asyncio
+python-dotenv

@@ -83,6 +83,9 @@ class RedisSessionStorage(SessionStorage):
         self.ttl = ttl_minutes * 60
         self.key_prefix = "chat_session:"
 
+        if not self.redis_url:
+            raise RedisConnectionError("Redis URL not provided")
+
         try:
             self.client = redis.from_url(self.redis_url, decode_responses=True)
             self.client.ping()

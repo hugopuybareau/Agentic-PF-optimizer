@@ -1,13 +1,11 @@
 // frontend/src/pages/Landing.tsx
 
 import { Link } from 'react-router-dom';
-import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Navigation } from '@/components/Navigation';
 
 export default function Landing() {
     return (
-        <div className="min-h-screen relative overflow-hidden">
-            <AnimatedBackground />
+        <div className="min-h-screen relative overflow-hidden bg-background">
             <Navigation />
 
             {/* Hero Section */}

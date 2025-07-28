@@ -2,14 +2,16 @@
 
 import { Link } from 'react-router-dom';
 import { Navigation } from '@/components/Navigation';
+import { SplitBackground } from '@/components/SplitBackground';
 
 export default function Landing() {
     return (
-        <div className="min-h-screen relative overflow-hidden bg-background">
+        <div className="min-h-screen relative overflow-hidden">
+            <SplitBackground />
             <Navigation />
 
             {/* Hero Section */}
-            <main className="relative z-10 min-h-screen flex items-center justify-center px-6">
+            <main className="relative z-20 min-h-screen flex items-center justify-center px-6">
                 <div className="max-w-4xl mx-auto text-center">
                     <div className="animate-fade-in-up">
                         {/* Scarce, minimalist headline */}

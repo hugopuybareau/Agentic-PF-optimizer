@@ -23,8 +23,8 @@
     },
     "chat": {
         "title": "Discutez avec nous",
-        "initialMessage": "Bonjour ! Je suis platine agent, votre copilote financier IA. Je peux vous aider à analyser votre portefeuille, obtenir des informations sur le marché et optimiser vos investissements. Comment puis-je vous aider aujourd'hui ?",
-        "platineAgent": "platine agent",
+        "initialMessage": "Bonjour ! Je suis silver agent, votre copilote financier IA. Je peux vous aider à analyser votre portefeuille, obtenir des informations sur le marché et optimiser vos investissements. Comment puis-je vous aider aujourd'hui ?",
+        "silverAgent": "silver agent",
         "yourAIFinancialCopilot": "Votre copilote financier IA",
         "responses": {
             "diversification": "Basé sur l'analyse de votre portefeuille, je recommande d'augmenter votre diversification dans le secteur technologique. Votre allocation actuelle montre de bonnes performances mais pourrait bénéficier d'un rééquilibrage.",
@@ -43,7 +43,7 @@
             "riskAssessment": "Évaluation des Risques",
             "riskAssessmentAction": "Évaluer le niveau de risque de mes positions actuelles"
         },
-        "placeholder": "Demandez n'importe quoi à platine agent sur votre portefeuille...",
+        "placeholder": "Demandez n'importe quoi à silver agent sur votre portefeuille...",
         "uploadFile": "Télécharger CSV ou PDF",
         "send": "Envoyer"
     },
@@ -54,7 +54,7 @@
     "features": {
         "title": "Fonctionnalités",
         "intelligentFinancialTools": "Outils financiers intelligents",
-        "platineAgentsDescription": "platine agents combine l'IA avancée avec l'expertise financière pour vous aider à prendre des décisions d'investissement plus intelligentes",
+        "silverAgentsDescription": "silver agents combine l'IA avancée avec l'expertise financière pour vous aider à prendre des décisions d'investissement plus intelligentes",
         "portfolioAnalysis": {
             "title": "Analyse de Portefeuille",
             "description": "Aperçus en temps réel sur la performance de vos investissements avec des analyses alimentées par l'IA"
@@ -82,7 +82,7 @@
         "readyToGetStarted": "Prêt à commencer ?",
         "joinThousandsOfInvestors": "Rejoignez des milliers d'investisseurs utilisant l'IA pour optimiser leurs portefeuilles",
         "startFreeTrial": "Commencer l'Essai Gratuit",
-        "talkToPlatineAgent": "Parler à platine agent"
+        "talkTosilverAgent": "Parler à silver agent"
     },
     "landing": {
         "welcome": "Bienvenue sur Agentic PF Optimizer",

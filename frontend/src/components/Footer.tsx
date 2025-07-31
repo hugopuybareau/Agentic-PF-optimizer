@@ -12,7 +12,7 @@ export function Footer() {
                     {/* Logo */}
                     <div>
                         <span className="text-nav font-semibold tracking-tight">
-                            platine
+                            silver
                             <span className="text-muted-foreground">
                                 agents
                             </span>
@@ -58,7 +58,7 @@ export function Footer() {
 
                 <div className="mt-6 pt-6 border-t border-border text-center">
                     <p className="text-sub text-sm">
-                        © {currentYear} platine agents. All rights reserved.
+                        © {currentYear} silver agents. All rights reserved.
                     </p>
                 </div>
             </div>

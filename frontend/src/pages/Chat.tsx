@@ -82,7 +82,7 @@ export default function Chat() {
         <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-hero mb-2">{t('chat.platineAgent')}</h1>
+            <h1 className="text-hero mb-2">{t('chat.silverAgent')}</h1>
             <p className="text-sub">{t('chat.yourAIFinancialCopilot')}</p>
           </div>
 
@@ -96,14 +96,14 @@ export default function Chat() {
                 <div className={`max-w-[80%] ${
                   message.isUser 
                     ? 'bg-primary text-primary-foreground' 
-                    : 'card-platine'
+                    : 'card-silver'
                 } p-4 rounded-lg`}>
                   {!message.isUser && (
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium">P</span>
                       </div>
-                      <span className="text-sub text-xs">{t('chat.platineAgent')}</span>
+                      <span className="text-sub text-xs">{t('chat.silverAgent')}</span>
                     </div>
                   )}
                   <p className="text-nav">{message.text}</p>
@@ -116,12 +116,12 @@ export default function Chat() {
             
             {isLoading && (
               <div className="flex justify-start animate-fade-in-up">
-                <div className="card-platine p-4 rounded-lg">
+                <div className="card-silver p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium">P</span>
                     </div>
-                    <span className="text-sub text-xs">{t('chat.platineAgent')}</span>
+                    <span className="text-sub text-xs">{t('chat.silverAgent')}</span>
                   </div>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
@@ -149,7 +149,7 @@ export default function Chat() {
           </div>
 
           {/* Input Area */}
-          <div className="card-platine p-4 rounded-lg">
+          <div className="card-silver p-4 rounded-lg">
             <div className="flex space-x-4">
               <input
                 type="text"

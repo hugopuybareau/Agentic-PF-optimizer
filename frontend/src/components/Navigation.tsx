@@ -50,7 +50,7 @@ export function Navigation() {
                         to={isAuthenticated ? "/landing" : "/"}
                         className="text-nav font-semibold tracking-tight"
                     >
-                        platine
+                        silver
                         <span className="text-muted-foreground"> agents</span>
                     </Link>
 

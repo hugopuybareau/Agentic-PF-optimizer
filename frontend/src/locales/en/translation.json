@@ -1,22 +1,84 @@
 {
     "alerts": {
-        "success": "Operation completed successfully!"
-    },
-    "contact": {
-        "title": "Contact Us"
+        "success": "Operation completed successfully!",
+        "title": "Alerts & Notifications",
+        "subtitle": "Stay informed about your portfolio and market opportunities",
+        "filters": {
+            "all": "All",
+            "unread": "Unread",
+            "risks": "Risks",
+            "opportunities": "Opportunities"
+        },
+        "empty": {
+            "title": "No alerts found",
+            "message": "You're all caught up! No {filter} alerts at this time."
+        },
+        "actions": {
+            "dismiss": "Dismiss"
+        },
+        "preferences": {
+            "title": "Alert Preferences",
+            "riskAlerts": "Risk Alerts",
+            "riskAlertsDesc": "Get notified about portfolio risks and volatility"
+        }
     },
     "chat": {
-        "title": "Chat with Us"
+        "title": "Chat with Us",
+        "subtitle": "Your AI financial copilot",
+        "initial": {
+            "welcome": "Hello! I'm silver agent, your AI financial copilot. I'll help you analyze your portfolio, understand market trends, and make informed investment decisions. What would you like to know about your investments today?"
+        },
+        "responses": {
+            "portfolioAnalysis": "Based on your portfolio composition, I notice you have a heavy allocation in tech stocks (45%). While this has driven strong returns this year (+23%), consider diversifying into other sectors like healthcare or consumer goods to reduce concentration risk. Your current Sharpe ratio of 1.8 is excellent, but we could optimize it further.",
+            "cryptoVolatility": "I see you're holding Bitcoin and Ethereum. Crypto markets are experiencing high volatility due to regulatory uncertainty and macro factors. Consider reducing your crypto allocation from 15% to 8-10% of your total portfolio to manage risk while maintaining upside exposure.",
+            "marketTrends": "Current market conditions show mixed signals. The Fed's hawkish stance is pressuring growth stocks, but value stocks in financials and energy are outperforming. I recommend rebalancing 10% from growth to value stocks in the near term.",
+            "riskAssessment": "Your portfolio's beta of 1.2 indicates higher volatility than the market. Recent additions of small-cap stocks increased your risk profile. Consider adding some defensive positions in utilities or REITs to lower overall portfolio beta to ~1.0.",
+            "optimization": "I've identified several optimization opportunities: 1) Reduce overlap between your large-cap funds, 2) Add international exposure (currently 5%, recommend 15-20%), and 3) Consider tax-loss harvesting on your underperforming positions."
+        },
+        "quickActions": {
+            "analyzePortfolio": "Analyze Portfolio",
+            "optimizeAllocation": "Optimize Allocation",
+            "marketNews": "Market News",
+            "riskAssessment": "Risk Assessment"
+        },
+        "input": {
+            "placeholder": "Ask silver agent anything about your portfolio..."
+        },
+        "upload": {
+            "tooltip": "Upload CSV or PDF"
+        }
+    },
+    "common": {
+        "agentName": "silver agent",
+        "send": "Send",
+        "optional": "(optional)",
+        "processing": "Processing..."
     },
     "error": {
         "occured": "An error occurred",
         "unknown": "Unknown error"
     },
-    "Features": {
-        "title": "Features"
+    "footer": {
+        "features": "Features",
+        "github": "GitHub",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "copyright": "© {currentYear} silver agents. All rights reserved."
     },
     "landing": {
-        "welcome": "Welcome to Agentic PF Optimizer"
+        "welcome": "Welcome to Agentic PF Optimizer",
+        "testPlatform": {
+            "title": "Welcome to silver agents test platform",
+            "subtitle": "Login with the credentials you were given"
+        },
+        "hero": {
+            "title": "Agents so good",
+            "subtitle": "they make you win money",
+            "description": "AI-powered portfolio analysis and market insights for modern investors"
+        },
+        "cta": {
+            "getStarted": "Get Started"
+        }
     },
     "login": {
         "account?": "Already have an account?",
@@ -36,13 +98,45 @@
         "welcomeBack": "Welcome back",
         "createAccount": "Create your account",
         "signInToContinue": "Sign in to your account to continue",
-        "joinUsToday": "Join us today and start optimizing your portfolio"
+        "joinUsToday": "Join us today and start optimizing your portfolio",
+        "processing": "Processing..."
     },
-    "portfolio": {
-        "overview": "Portfolio Overview"
+    "navigation": {
+        "chat": "Chat",
+        "portfolio": "Portfolio",
+        "alerts": "Alerts",
+        "toggleTheme": "Toggle theme",
+        "login": "Log in"
     },
     "notFound": {
-        "title": "Page Not Found"
+        "title": "Page Not Found",
+        "message": "Oops! Page not found",
+        "returnHome": "Return to Home"
+    },
+    "portfolio": {
+        "title": "Portfolio Overview",
+        "subtitle": "Track your investments and performance",
+        "stats": {
+            "totalValue": "Total Value",
+            "monthlyGain": "+2.3% this month",
+            "riskLevel": "Risk Level",
+            "balancedAllocation": "Balanced allocation",
+            "diversification": "Diversification",
+            "wellDiversified": "Well diversified",
+            "monthlyReturn": "Monthly Return",
+            "outperforming": "Outperforming S&P"
+        },
+        "risk": {
+            "medium": "Medium"
+        },
+        "holdings": {
+            "title": "Holdings"
+        },
+        "charts": {
+            "allocation": "Allocation",
+            "performance": "6M Performance"
+        },
+        "overview": "Portfolio Overview"
     },
     "close": "Close"
 }

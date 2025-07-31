@@ -1,8 +1,10 @@
 // frontend/src/components/Footer.tsx
 
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export function Footer() {
+    const { t } = useTranslation();
     const currentYear = new Date().getFullYear();
 
     return (
@@ -12,7 +14,7 @@ export function Footer() {
                     {/* Logo */}
                     <div>
                         <span className="text-nav font-semibold tracking-tight">
-                            platine
+                            silver
                             <span className="text-muted-foreground">
                                 agents
                             </span>
@@ -25,13 +27,7 @@ export function Footer() {
                             to="/features"
                             className="text-sub hover:text-primary transition-colors text-sm"
                         >
-                            Features
-                        </Link>
-                        <Link
-                            to="/contact"
-                            className="text-sub hover:text-primary transition-colors text-sm"
-                        >
-                            Contact
+                            {t('footer.features')}
                         </Link>
                         <a
                             href="https://github.com"
@@ -39,26 +35,26 @@ export function Footer() {
                             rel="noopener noreferrer"
                             className="text-sub hover:text-primary transition-colors text-sm"
                         >
-                            GitHub
+                            {t('footer.github')}
                         </a>
                         <a
                             href="/privacy"
                             className="text-sub hover:text-primary transition-colors text-sm"
                         >
-                            Privacy
+                            {t('footer.privacy')}
                         </a>
                         <a
                             href="/terms"
                             className="text-sub hover:text-primary transition-colors text-sm"
                         >
-                            Terms
+                            {t('footer.terms')}
                         </a>
                     </div>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-border text-center">
                     <p className="text-sub text-sm">
-                        © {currentYear} platine agents. All rights reserved.
+                        {t('footer.copyright', { currentYear })}
                     </p>
                 </div>
             </div>

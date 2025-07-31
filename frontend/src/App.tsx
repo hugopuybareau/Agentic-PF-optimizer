@@ -14,13 +14,15 @@ import Landing from "@/pages/Landing";
 import Portfolio from "@/pages/Portfolio";
 import Chat from "@/pages/Chat";
 import Alerts from "@/pages/Alerts";
+import Features from "@/pages/Features";
+import Contact from "@/pages/Contact";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
     <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="dark" storageKey="silver-ui-theme">
+        <ThemeProvider defaultTheme="dark" storageKey="platine-ui-theme">
             <TooltipProvider>
                 <Toaster />
                 <Sonner />
@@ -30,6 +32,8 @@ const App = () => (
                         <Route path="/portfolio" element={<Portfolio />} />
                         <Route path="/chat" element={<Chat />} />
                         <Route path="/alerts" element={<Alerts />} />
+                        <Route path="/features" element={<Features />} />
+                        <Route path="/contact" element={<Contact />} />
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                         <Route path="*" element={<NotFound />} />
                     </Routes>

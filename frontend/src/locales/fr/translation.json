@@ -112,11 +112,17 @@
         "joinUsToday": "Rejoignez-nous aujourd'hui et commencez à optimiser votre portefeuille",
         "optional": "optionnel"
     },
+    "loginPage": {
+        "welcomeTitle": "Accès Exclusif",
+        "description": "Entrez dans l'avenir de la gestion de portefeuille avec des insights alimentés par l'IA qui vous aident à prendre des décisions d'investissement plus intelligentes.",
+        "exclusiveAccess": "L'accès est restreint aux utilisateurs autorisés uniquement."
+    },
     "nav": {
         "chat": "Discussion",
         "portfolio": "Portefeuille",
         "alerts": "Alertes",
-        "toggleTheme": "Basculer le thème"
+        "toggleTheme": "Basculer le thème",
+        "logout": "Déconnexion"
     },
     "portfolio": {
         "overview": "Vue d'ensemble du portefeuille",

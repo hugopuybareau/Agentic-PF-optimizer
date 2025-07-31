@@ -112,11 +112,17 @@
         "joinUsToday": "Join us today and start optimizing your portfolio",
         "optional": "optional"
     },
+    "loginPage": {
+        "welcomeTitle": "Exclusive Access",
+        "description": "Enter the future of portfolio management with AI-powered insights that help you make smarter investment decisions.",
+        "exclusiveAccess": "Access is restricted to authorized users only."
+    },
     "nav": {
         "chat": "Chat",
         "portfolio": "Portfolio",
         "alerts": "Alerts",
-        "toggleTheme": "Toggle theme"
+        "toggleTheme": "Toggle theme",
+        "logout": "Logout"
     },
     "portfolio": {
         "overview": "Portfolio Overview",

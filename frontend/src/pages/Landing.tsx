@@ -34,7 +34,7 @@ export default function Landing() {
                         {/* Bottom-aligned minimal CTA */}
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-16">
                             <Link
-                                to="/portfolio"
+                                to="/chat"
                                 className="btn-primary px-6 py-3 rounded-lg text-sm"
                             >
                                 {t('landing.getStarted')}

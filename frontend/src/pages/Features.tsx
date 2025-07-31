@@ -135,7 +135,7 @@ export default function Features() {
                             {t('features.intelligentFinancialTools')}
                         </h1>
                         <p className="text-sub max-w-2xl mx-auto">
-                            {t('features.platineAgentsDescription')}
+                            {t('features.silverAgentsDescription')}
                         </p>
                     </div>
 
@@ -144,7 +144,7 @@ export default function Features() {
                         {features.map((feature, index) => (
                             <div
                                 key={feature.title}
-                                className="card-platine p-8 rounded-lg hover:shadow-elevation transition-all duration-300 animate-fade-in-up"
+                                className="card-silver p-8 rounded-lg hover:shadow-elevation transition-all duration-300 animate-fade-in-up"
                                 style={{ animationDelay: `${index * 0.1}s` }}
                             >
                                 <div className="mb-6">
@@ -164,7 +164,7 @@ export default function Features() {
 
                     {/* CTA Section */}
                     <div className="mt-20 text-center">
-                        <div className="card-platine p-12 rounded-lg">
+                        <div className="card-silver p-12 rounded-lg">
                             <h2 className="text-hero mb-4">
                                 {t('features.readyToGetStarted')}
                             </h2>
@@ -182,7 +182,7 @@ export default function Features() {
                                     href="/chat"
                                     className="btn-ghost px-8 py-3 rounded-lg text-nav"
                                 >
-                                    {t('features.talkToPlatineAgent')}
+                                    {t('features.talkTosilverAgent')}
                                 </a>
                             </div>
                         </div>

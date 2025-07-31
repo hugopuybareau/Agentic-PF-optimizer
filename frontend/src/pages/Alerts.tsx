@@ -180,7 +180,7 @@ export default function Alerts() {
           {/* Alerts List */}
           <div className="space-y-4">
             {filteredAlerts.length === 0 ? (
-              <div className="card-platine p-8 rounded-lg text-center">
+              <div className="card-silver p-8 rounded-lg text-center">
                 <svg className="w-12 h-12 text-muted-foreground mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5l-5-5h5v-5a4 4 0 00-8 0v5h5l-5 5l-5-5h5V7a9 9 0 0118 0v10z" />
                 </svg>
@@ -191,7 +191,7 @@ export default function Alerts() {
               filteredAlerts.map((alert) => (
                 <div
                   key={alert.id}
-                  className={`card-platine p-6 rounded-lg border-l-4 transition-all hover:shadow-elevation ${
+                  className={`card-silver p-6 rounded-lg border-l-4 transition-all hover:shadow-elevation ${
                     getSeverityColor(alert.severity)
                   } ${!alert.isRead ? 'ring-1 ring-primary/20' : ''}`}
                   onClick={() => !alert.isRead && markAsRead(alert.id)}
@@ -237,7 +237,7 @@ export default function Alerts() {
           </div>
 
           {/* Alert Settings */}
-          <div className="mt-12 card-platine p-6 rounded-lg">
+          <div className="mt-12 card-silver p-6 rounded-lg">
             <h2 className="text-nav font-medium mb-4">{t('alerts.alertPreferences')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">

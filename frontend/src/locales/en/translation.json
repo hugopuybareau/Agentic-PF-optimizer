@@ -23,8 +23,8 @@
     },
     "chat": {
         "title": "Chat with Us",
-        "initialMessage": "Hello! I'm platine agent, your AI financial copilot. I can help you analyze your portfolio, get market insights, and optimize your investments. How can I assist you today?",
-        "platineAgent": "platine agent",
+        "initialMessage": "Hello! I'm silver agent, your AI financial copilot. I can help you analyze your portfolio, get market insights, and optimize your investments. How can I assist you today?",
+        "silverAgent": "silver agent",
         "yourAIFinancialCopilot": "Your AI financial copilot",
         "responses": {
             "diversification": "Based on your portfolio analysis, I recommend increasing your diversification in the technology sector. Your current allocation shows strong performance but could benefit from some rebalancing.",
@@ -43,7 +43,7 @@
             "riskAssessment": "Risk Assessment",
             "riskAssessmentAction": "Assess the risk level of my current holdings"
         },
-        "placeholder": "Ask platine agent anything about your portfolio...",
+        "placeholder": "Ask silver agent anything about your portfolio...",
         "uploadFile": "Upload CSV or PDF",
         "send": "Send"
     },
@@ -54,7 +54,7 @@
     "features": {
         "title": "Features",
         "intelligentFinancialTools": "Intelligent financial tools",
-        "platineAgentsDescription": "platine agents combines advanced AI with financial expertise to help you make smarter investment decisions",
+        "silverAgentsDescription": "silver agents combines advanced AI with financial expertise to help you make smarter investment decisions",
         "portfolioAnalysis": {
             "title": "Portfolio Analysis",
             "description": "Real-time insights into your investment performance with AI-powered analytics"
@@ -82,7 +82,7 @@
         "readyToGetStarted": "Ready to get started?",
         "joinThousandsOfInvestors": "Join thousands of investors using AI to optimize their portfolios",
         "startFreeTrial": "Start Free Trial",
-        "talkToPlatineAgent": "Talk to platine agent"
+        "talkTosilverAgent": "Talk to silver agent"
     },
     "landing": {
         "welcome": "Welcome to Agentic PF Optimizer",
@@ -112,11 +112,17 @@
         "joinUsToday": "Join us today and start optimizing your portfolio",
         "optional": "optional"
     },
+    "loginPage": {
+        "welcomeTitle": "Exclusive Access",
+        "description": "Enter the future of portfolio management with AI-powered insights that help you make smarter investment decisions.",
+        "exclusiveAccess": "Access is restricted to authorized users only."
+    },
     "nav": {
         "chat": "Chat",
         "portfolio": "Portfolio",
         "alerts": "Alerts",
-        "toggleTheme": "Toggle theme"
+        "toggleTheme": "Toggle theme",
+        "logout": "Logout"
     },
     "portfolio": {
         "overview": "Portfolio Overview",

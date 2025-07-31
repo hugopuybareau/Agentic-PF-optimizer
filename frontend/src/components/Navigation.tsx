@@ -1,15 +1,18 @@
 // frontend/src/components/Navigation.tsx
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function Navigation() {
     const { t } = useTranslation();
     const [isScrolled, setIsScrolled] = useState(false);
     const { theme, setTheme } = useTheme();
+    const { isAuthenticated, logout } = useAuth();
     const location = useLocation();
+    const navigate = useNavigate();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -21,6 +24,11 @@ export function Navigation() {
 
     const toggleTheme = () => {
         setTheme(theme === 'dark' ? 'light' : 'dark');
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
     };
 
     const navLinks = [
@@ -39,10 +47,10 @@ export function Navigation() {
                 <div className="flex items-center justify-between">
                     {/* Logo */}
                     <Link
-                        to="/"
+                        to={isAuthenticated ? "/landing" : "/"}
                         className="text-nav font-semibold tracking-tight"
                     >
-                        platine
+                        silver
                         <span className="text-muted-foreground"> agents</span>
                     </Link>
 
@@ -102,13 +110,22 @@ export function Navigation() {
                             )}
                         </button>
 
-                        {/* Log In */}
-                        <Link
-                            to="/login"
-                            className="btn-ghost px-4 py-2 rounded-lg text-nav hover:bg-accent/50 transition-colors"
-                        >
-                            {t('login.logIn')}
-                        </Link>
+                        {/* Auth Button */}
+                        {isAuthenticated ? (
+                            <button
+                                onClick={handleLogout}
+                                className="btn-ghost px-4 py-2 rounded-lg text-nav hover:bg-accent/50 transition-colors"
+                            >
+                                {t('nav.logout')}
+                            </button>
+                        ) : (
+                            <Link
+                                to="/"
+                                className="btn-ghost px-4 py-2 rounded-lg text-nav hover:bg-accent/50 transition-colors"
+                            >
+                                {t('login.logIn')}
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

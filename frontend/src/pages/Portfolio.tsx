@@ -63,7 +63,7 @@ export default function Portfolio() {
 
           {/* Stats Cards */}
           <div className="grid md:grid-cols-4 gap-6 mb-8">
-            <div className="card-platine p-6 rounded-lg">
+            <div className="card-silver p-6 rounded-lg">
               <h3 className="text-sub mb-2">{t('portfolio.totalValue')}</h3>
               <p className="text-2xl font-semibold">
                 ${totalValue.toLocaleString()}
@@ -71,19 +71,19 @@ export default function Portfolio() {
               <p className="text-xs text-green-600 mt-1">{t('portfolio.thisMonthGain')}</p>
             </div>
             
-            <div className="card-platine p-6 rounded-lg">
+            <div className="card-silver p-6 rounded-lg">
               <h3 className="text-sub mb-2">{t('portfolio.riskLevel')}</h3>
               <p className="text-2xl font-semibold">{t('portfolio.medium')}</p>
               <p className="text-xs text-muted-foreground mt-1">{t('portfolio.balancedAllocation')}</p>
             </div>
             
-            <div className="card-platine p-6 rounded-lg">
+            <div className="card-silver p-6 rounded-lg">
               <h3 className="text-sub mb-2">{t('portfolio.diversification')}</h3>
               <p className="text-2xl font-semibold">85%</p>
               <p className="text-xs text-blue-600 mt-1">{t('portfolio.wellDiversified')}</p>
             </div>
             
-            <div className="card-platine p-6 rounded-lg">
+            <div className="card-silver p-6 rounded-lg">
               <h3 className="text-sub mb-2">{t('portfolio.monthlyReturn')}</h3>
               <p className="text-2xl font-semibold">+3.2%</p>
               <p className="text-xs text-green-600 mt-1">{t('portfolio.outperformingSP')}</p>
@@ -93,7 +93,7 @@ export default function Portfolio() {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Portfolio Holdings */}
             <div className="lg:col-span-2">
-              <div className="card-platine p-6 rounded-lg">
+              <div className="card-silver p-6 rounded-lg">
                 <h2 className="text-nav font-medium mb-6">{t('portfolio.holdings')}</h2>
                 <div className="space-y-4">
                   {portfolioData.map((asset) => (
@@ -126,7 +126,7 @@ export default function Portfolio() {
             {/* Charts */}
             <div className="space-y-6">
               {/* Allocation Chart */}
-              <div className="card-platine p-6 rounded-lg">
+              <div className="card-silver p-6 rounded-lg">
                 <h2 className="text-nav font-medium mb-4">{t('portfolio.allocation')}</h2>
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
@@ -175,7 +175,7 @@ export default function Portfolio() {
               </div>
 
               {/* Performance Chart */}
-              <div className="card-platine p-6 rounded-lg">
+              <div className="card-silver p-6 rounded-lg">
                 <h2 className="text-nav font-medium mb-4">{t('portfolio.sixMonthPerformance')}</h2>
                 <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">

@@ -1,9 +1,11 @@
 // frontend/src/pages/NotFound.tsx
 
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useEffect } from 'react';
 
 const NotFound = () => {
+    const { t } = useTranslation();
     const location = useLocation();
 
     useEffect(() => {
@@ -18,13 +20,13 @@ const NotFound = () => {
             <div className="text-center">
                 <h1 className="text-4xl font-bold mb-4 text-foreground">404</h1>
                 <p className="text-xl text-muted-foreground mb-4">
-                    Oops! Page not found
+                    {t('notFound.pageNotFound')}
                 </p>
                 <a
                     href="/"
                     className="text-primary hover:text-primary/80 underline"
                 >
-                    Return to Home
+                    {t('notFound.returnToHome')}
                 </a>
             </div>
         </div>

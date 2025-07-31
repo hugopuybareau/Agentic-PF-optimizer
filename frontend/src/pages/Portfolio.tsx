@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Navigation } from '@/components/Navigation'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 
@@ -36,6 +37,7 @@ const performanceData = [
 ]
 
 export default function Portfolio() {
+  const { t } = useTranslation()
   const totalValue = portfolioData.reduce((sum, item) => sum + item.value, 0)
 
   const getRiskBadgeColor = (risk: string) => {
@@ -55,36 +57,36 @@ export default function Portfolio() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-hero mb-2">Portfolio Overview</h1>
-            <p className="text-sub">Track your investments and performance</p>
+            <h1 className="text-hero mb-2">{t('portfolio.portfolioOverview')}</h1>
+            <p className="text-sub">{t('portfolio.trackInvestments')}</p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid md:grid-cols-4 gap-6 mb-8">
             <div className="card-platine p-6 rounded-lg">
-              <h3 className="text-sub mb-2">Total Value</h3>
+              <h3 className="text-sub mb-2">{t('portfolio.totalValue')}</h3>
               <p className="text-2xl font-semibold">
                 ${totalValue.toLocaleString()}
               </p>
-              <p className="text-xs text-green-600 mt-1">+2.3% this month</p>
+              <p className="text-xs text-green-600 mt-1">{t('portfolio.thisMonthGain')}</p>
             </div>
             
             <div className="card-platine p-6 rounded-lg">
-              <h3 className="text-sub mb-2">Risk Level</h3>
-              <p className="text-2xl font-semibold">Medium</p>
-              <p className="text-xs text-muted-foreground mt-1">Balanced allocation</p>
+              <h3 className="text-sub mb-2">{t('portfolio.riskLevel')}</h3>
+              <p className="text-2xl font-semibold">{t('portfolio.medium')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('portfolio.balancedAllocation')}</p>
             </div>
             
             <div className="card-platine p-6 rounded-lg">
-              <h3 className="text-sub mb-2">Diversification</h3>
+              <h3 className="text-sub mb-2">{t('portfolio.diversification')}</h3>
               <p className="text-2xl font-semibold">85%</p>
-              <p className="text-xs text-blue-600 mt-1">Well diversified</p>
+              <p className="text-xs text-blue-600 mt-1">{t('portfolio.wellDiversified')}</p>
             </div>
             
             <div className="card-platine p-6 rounded-lg">
-              <h3 className="text-sub mb-2">Monthly Return</h3>
+              <h3 className="text-sub mb-2">{t('portfolio.monthlyReturn')}</h3>
               <p className="text-2xl font-semibold">+3.2%</p>
-              <p className="text-xs text-green-600 mt-1">Outperforming S&P</p>
+              <p className="text-xs text-green-600 mt-1">{t('portfolio.outperformingSP')}</p>
             </div>
           </div>
 
@@ -92,7 +94,7 @@ export default function Portfolio() {
             {/* Portfolio Holdings */}
             <div className="lg:col-span-2">
               <div className="card-platine p-6 rounded-lg">
-                <h2 className="text-nav font-medium mb-6">Holdings</h2>
+                <h2 className="text-nav font-medium mb-6">{t('portfolio.holdings')}</h2>
                 <div className="space-y-4">
                   {portfolioData.map((asset) => (
                     <div key={asset.symbol} className="flex items-center justify-between p-4 rounded-lg hover:bg-accent/10 transition-colors">
@@ -125,7 +127,7 @@ export default function Portfolio() {
             <div className="space-y-6">
               {/* Allocation Chart */}
               <div className="card-platine p-6 rounded-lg">
-                <h2 className="text-nav font-medium mb-4">Allocation</h2>
+                <h2 className="text-nav font-medium mb-4">{t('portfolio.allocation')}</h2>
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -174,7 +176,7 @@ export default function Portfolio() {
 
               {/* Performance Chart */}
               <div className="card-platine p-6 rounded-lg">
-                <h2 className="text-nav font-medium mb-4">6M Performance</h2>
+                <h2 className="text-nav font-medium mb-4">{t('portfolio.sixMonthPerformance')}</h2>
                 <div className="h-32">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={performanceData}>

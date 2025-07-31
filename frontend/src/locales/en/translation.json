@@ -1,22 +1,95 @@
 {
     "alerts": {
-        "success": "Operation completed successfully!"
+        "success": "Operation completed successfully!",
+        "alertsAndNotifications": "Alerts & Notifications",
+        "stayInformed": "Stay informed about your portfolio and market opportunities",
+        "all": "All",
+        "unread": "Unread",
+        "risks": "Risks",
+        "opportunities": "Opportunities",
+        "noAlertsFound": "No alerts found",
+        "allCaughtUp": "You're all caught up! No alerts at this time.",
+        "dismiss": "Dismiss",
+        "alertPreferences": "Alert Preferences",
+        "riskAlerts": "Risk Alerts",
+        "riskAlertsDescription": "Get notified about portfolio risks and volatility",
+        "opportunityAlerts": "Opportunity Alerts",
+        "opportunityAlertsDescription": "Receive investment opportunities and optimization tips",
+        "marketNews": "Market News",
+        "marketNewsDescription": "Stay updated with relevant market developments"
     },
     "contact": {
         "title": "Contact Us"
     },
     "chat": {
-        "title": "Chat with Us"
+        "title": "Chat with Us",
+        "initialMessage": "Hello! I'm platine agent, your AI financial copilot. I can help you analyze your portfolio, get market insights, and optimize your investments. How can I assist you today?",
+        "platineAgent": "platine agent",
+        "yourAIFinancialCopilot": "Your AI financial copilot",
+        "responses": {
+            "diversification": "Based on your portfolio analysis, I recommend increasing your diversification in the technology sector. Your current allocation shows strong performance but could benefit from some rebalancing.",
+            "volatility": "I've analyzed the latest market trends. There's been increased volatility in your crypto holdings. Consider taking some profits or adjusting your risk exposure.",
+            "excellentDiversification": "Your portfolio shows excellent diversification. The S&P 500 ETF position provides good stability. Would you like me to suggest some growth opportunities?",
+            "renewableEnergy": "Market sentiment analysis indicates potential opportunities in renewable energy sectors. Your current ESG exposure is minimal - shall I provide some recommendations?",
+            "cashPosition": "I notice your cash position is quite conservative at 3%. Given current market conditions, this might be optimal for risk management."
+        },
+        "quickActions": {
+            "analyzePortfolio": "Analyze Portfolio",
+            "analyzePortfolioAction": "Analyze my current portfolio performance",
+            "optimizeAllocation": "Optimize Allocation",
+            "optimizeAllocationAction": "Suggest portfolio optimization strategies",
+            "marketNews": "Market News",
+            "marketNewsAction": "What are the latest market trends I should know about?",
+            "riskAssessment": "Risk Assessment",
+            "riskAssessmentAction": "Assess the risk level of my current holdings"
+        },
+        "placeholder": "Ask platine agent anything about your portfolio...",
+        "uploadFile": "Upload CSV or PDF",
+        "send": "Send"
     },
     "error": {
         "occured": "An error occurred",
         "unknown": "Unknown error"
     },
-    "Features": {
-        "title": "Features"
+    "features": {
+        "title": "Features",
+        "intelligentFinancialTools": "Intelligent financial tools",
+        "platineAgentsDescription": "platine agents combines advanced AI with financial expertise to help you make smarter investment decisions",
+        "portfolioAnalysis": {
+            "title": "Portfolio Analysis",
+            "description": "Real-time insights into your investment performance with AI-powered analytics"
+        },
+        "aiFinancialCopilot": {
+            "title": "AI Financial Copilot",
+            "description": "Conversational AI that understands your financial goals and provides personalized guidance"
+        },
+        "smartAlerts": {
+            "title": "Smart Alerts",
+            "description": "Proactive notifications about market changes, risks, and opportunities"
+        },
+        "riskManagement": {
+            "title": "Risk Management",
+            "description": "Advanced risk assessment tools to protect and optimize your investments"
+        },
+        "marketIntelligence": {
+            "title": "Market Intelligence",
+            "description": "Stay ahead with AI-curated market insights and trend analysis"
+        },
+        "portfolioOptimization": {
+            "title": "Portfolio Optimization",
+            "description": "AI-driven recommendations to improve diversification and performance"
+        },
+        "readyToGetStarted": "Ready to get started?",
+        "joinThousandsOfInvestors": "Join thousands of investors using AI to optimize their portfolios",
+        "startFreeTrial": "Start Free Trial",
+        "talkToPlatineAgent": "Talk to platine agent"
     },
     "landing": {
-        "welcome": "Welcome to Agentic PF Optimizer"
+        "welcome": "Welcome to Agentic PF Optimizer",
+        "agentsSoGood": "agents so good",
+        "theyMakeYouWinMoney": "they make you win money",
+        "aiPoweredDescription": "AI-powered portfolio analysis and market insights for modern investors",
+        "getStarted": "Get Started"
     },
     "login": {
         "account?": "Already have an account?",
@@ -36,13 +109,36 @@
         "welcomeBack": "Welcome back",
         "createAccount": "Create your account",
         "signInToContinue": "Sign in to your account to continue",
-        "joinUsToday": "Join us today and start optimizing your portfolio"
+        "joinUsToday": "Join us today and start optimizing your portfolio",
+        "optional": "optional"
+    },
+    "nav": {
+        "chat": "Chat",
+        "portfolio": "Portfolio",
+        "alerts": "Alerts",
+        "toggleTheme": "Toggle theme"
     },
     "portfolio": {
-        "overview": "Portfolio Overview"
+        "overview": "Portfolio Overview",
+        "portfolioOverview": "Portfolio Overview",
+        "trackInvestments": "Track your investments and performance",
+        "totalValue": "Total Value",
+        "thisMonthGain": "+2.3% this month",
+        "riskLevel": "Risk Level",
+        "medium": "Medium",
+        "balancedAllocation": "Balanced allocation",
+        "diversification": "Diversification",
+        "wellDiversified": "Well diversified",
+        "monthlyReturn": "Monthly Return",
+        "outperformingSP": "Outperforming S&P",
+        "holdings": "Holdings",
+        "allocation": "Allocation",
+        "sixMonthPerformance": "6M Performance"
     },
     "notFound": {
-        "title": "Page Not Found"
+        "title": "Page Not Found",
+        "pageNotFound": "Oops! Page not found",
+        "returnToHome": "Return to Home"
     },
     "close": "Close"
 }

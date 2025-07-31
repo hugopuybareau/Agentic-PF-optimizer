@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Navigation } from '@/components/Navigation'
 
 type Alert = {
@@ -60,6 +61,7 @@ const mockAlerts: Alert[] = [
 ]
 
 export default function Alerts() {
+  const { t } = useTranslation()
   const [alerts, setAlerts] = useState<Alert[]>(mockAlerts)
   const [filter, setFilter] = useState<'all' | 'unread' | 'risk' | 'opportunity'>('all')
 
@@ -143,23 +145,23 @@ export default function Alerts() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-hero mb-2">
-              Alerts & Notifications
+              {t('alerts.alertsAndNotifications')}
               {unreadCount > 0 && (
                 <span className="ml-3 bg-destructive text-destructive-foreground px-2 py-1 rounded-full text-sm font-medium">
                   {unreadCount}
                 </span>
               )}
             </h1>
-            <p className="text-sub">Stay informed about your portfolio and market opportunities</p>
+            <p className="text-sub">{t('alerts.stayInformed')}</p>
           </div>
 
           {/* Filters */}
           <div className="flex space-x-2 mb-6">
             {[
-              { key: 'all', label: 'All' },
-              { key: 'unread', label: 'Unread' },
-              { key: 'risk', label: 'Risks' },
-              { key: 'opportunity', label: 'Opportunities' }
+              { key: 'all', label: t('alerts.all') },
+              { key: 'unread', label: t('alerts.unread') },
+              { key: 'risk', label: t('alerts.risks') },
+              { key: 'opportunity', label: t('alerts.opportunities') }
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -182,8 +184,8 @@ export default function Alerts() {
                 <svg className="w-12 h-12 text-muted-foreground mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5l-5-5h5v-5a4 4 0 00-8 0v5h5l-5 5l-5-5h5V7a9 9 0 0118 0v10z" />
                 </svg>
-                <h3 className="text-nav font-medium mb-2">No alerts found</h3>
-                <p className="text-sub">You're all caught up! No {filter !== 'all' ? filter : ''} alerts at this time.</p>
+                <h3 className="text-nav font-medium mb-2">{t('alerts.noAlertsFound')}</h3>
+                <p className="text-sub">{t('alerts.allCaughtUp')}</p>
               </div>
             ) : (
               filteredAlerts.map((alert) => (
@@ -222,7 +224,7 @@ export default function Alerts() {
                         dismissAlert(alert.id)
                       }}
                       className="ml-4 p-1 hover:bg-accent rounded transition-colors"
-                      title="Dismiss"
+                      title={t('alerts.dismiss')}
                     >
                       <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -236,12 +238,12 @@ export default function Alerts() {
 
           {/* Alert Settings */}
           <div className="mt-12 card-platine p-6 rounded-lg">
-            <h2 className="text-nav font-medium mb-4">Alert Preferences</h2>
+            <h2 className="text-nav font-medium mb-4">{t('alerts.alertPreferences')}</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-nav">Risk Alerts</h3>
-                  <p className="text-sub text-xs">Get notified about portfolio risks and volatility</p>
+                  <h3 className="text-nav">{t('alerts.riskAlerts')}</h3>
+                  <p className="text-sub text-xs">{t('alerts.riskAlertsDescription')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" defaultChecked className="sr-only peer" />
@@ -251,8 +253,8 @@ export default function Alerts() {
               
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-nav">Opportunity Alerts</h3>
-                  <p className="text-sub text-xs">Receive investment opportunities and optimization tips</p>
+                  <h3 className="text-nav">{t('alerts.opportunityAlerts')}</h3>
+                  <p className="text-sub text-xs">{t('alerts.opportunityAlertsDescription')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" defaultChecked className="sr-only peer" />
@@ -262,8 +264,8 @@ export default function Alerts() {
               
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-nav">Market News</h3>
-                  <p className="text-sub text-xs">Stay updated with relevant market developments</p>
+                  <h3 className="text-nav">{t('alerts.marketNews')}</h3>
+                  <p className="text-sub text-xs">{t('alerts.marketNewsDescription')}</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" defaultChecked className="sr-only peer" />

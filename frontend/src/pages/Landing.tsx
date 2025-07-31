@@ -1,10 +1,13 @@
 // frontend/src/pages/Landing.tsx
 
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
 import { SplitBackground } from '@/components/SplitBackground';
 
 export default function Landing() {
+    const { t } = useTranslation();
+
     return (
         <div className="min-h-screen relative overflow-hidden">
             <SplitBackground />
@@ -16,17 +19,16 @@ export default function Landing() {
                     <div className="animate-fade-in-up">
                         {/* Scarce, minimalist headline */}
                         <h1 className="text-hero mb-4 font-medium tracking-tight">
-                            Financial intelligence,
+                            {t('landing.agentsSoGood')}
                             <br />
                             <span className="text-muted-foreground">
-                                simplified.
+                                {t('landing.theyMakeYouWinMoney')}
                             </span>
                         </h1>
 
                         {/* Small subheadline */}
                         <p className="text-sub mb-12 max-w-lg mx-auto">
-                            AI-powered portfolio analysis and market insights
-                            for modern investors
+                            {t('landing.aiPoweredDescription')}
                         </p>
 
                         {/* Bottom-aligned minimal CTA */}
@@ -35,7 +37,7 @@ export default function Landing() {
                                 to="/portfolio"
                                 className="btn-primary px-6 py-3 rounded-lg text-sm"
                             >
-                                Get Started
+                                {t('landing.getStarted')}
                             </Link>
                         </div>
                     </div>

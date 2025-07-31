@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* silver Color Palette - Black & Light Platinum */
+    /* platine Color Palette - Black & Light Platinum */
     --background: 34 9% 90%;        /* Light Platinum #e5e4e2 */
     --foreground: 0 0% 0%;          /* Pure Black */
     
@@ -37,7 +37,7 @@
     
     --radius: 0.375rem;
     
-    /* silver Gradients */
+    /* platine Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(34 9% 90%), hsl(34 9% 80%));
     --gradient-platinum: linear-gradient(180deg, hsl(34 9% 88%), hsl(34 9% 85%));
     --gradient-depth: linear-gradient(135deg, hsl(0 0% 0% / 0.95), hsl(0 0% 10%));
@@ -46,7 +46,7 @@
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-crisp: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     
-    /* silver Shadows - Sharp, No Blur */
+    /* platine Shadows - Sharp, No Blur */
     --shadow-sharp: 0 2px 0 hsl(0 0% 0% / 0.1);
     --shadow-elevation: 0 4px 0 hsl(0 0% 0% / 0.15);
   }
@@ -103,15 +103,15 @@
 }
 
 @layer components {
-  /* silver Button Variants */
-  .btn-silver {
+  /* platine Button Variants */
+  .btn-platine {
     @apply inline-flex items-center justify-center text-sm font-medium transition-crisp 
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring 
            disabled:pointer-events-none disabled:opacity-50;
   }
   
   .btn-primary {
-    @apply btn-silver bg-primary text-primary-foreground;
+    @apply btn-platine bg-primary text-primary-foreground;
     box-shadow: var(--shadow-sharp);
   }
   
@@ -121,7 +121,7 @@
   }
   
   .btn-secondary {
-    @apply btn-silver bg-secondary text-secondary-foreground;
+    @apply btn-platine bg-secondary text-secondary-foreground;
     box-shadow: var(--shadow-sharp);
   }
   
@@ -131,7 +131,7 @@
   }
   
   .btn-ghost {
-    @apply btn-silver hover:bg-accent hover:text-accent-foreground;
+    @apply btn-platine hover:bg-accent hover:text-accent-foreground;
   }
   
   /* Navigation Styles */
@@ -140,7 +140,7 @@
   }
   
   /* Card Styles */
-  .card-silver {
+  .card-platine {
     @apply bg-card text-card-foreground border border-border;
     box-shadow: var(--shadow-sharp);
   }
@@ -186,7 +186,7 @@
   }
 }
 
-/* silver Background Animations - Sharp & Crisp */
+/* platine Background Animations - Sharp & Crisp */
 @keyframes float {
   0%, 100% { 
     transform: translateY(0px) translateX(0px); 

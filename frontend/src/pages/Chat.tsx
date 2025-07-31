@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { Navigation } from '@/components/Navigation'
 
 type Message = {
@@ -9,18 +8,17 @@ type Message = {
   timestamp: Date
 }
 
-const getInitialMessages = (t: (key: string) => string): Message[] => [
+const initialMessages: Message[] = [
   {
     id: '1',
-    text: t('chat.initial.welcome'),
+    text: "Hello! I'm platine agent, your AI financial copilot. I can help you analyze your portfolio, get market insights, and optimize your investments. How can I assist you today?",
     isUser: false,
     timestamp: new Date(),
   }
 ]
 
 export default function Chat() {
-  const { t } = useTranslation()
-  const [messages, setMessages] = useState<Message[]>(getInitialMessages(t))
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -43,7 +41,7 @@ export default function Chat() {
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateAIResponse(),
+        text: generateAIResponse(inputValue),
         isUser: false,
         timestamp: new Date(),
       }
@@ -52,13 +50,13 @@ export default function Chat() {
     }, 1000)
   }
 
-  const generateAIResponse = (): string => {
+  const generateAIResponse = (input: string): string => {
     const responses = [
-      t('chat.responses.portfolioAnalysis'),
-      t('chat.responses.cryptoVolatility'),
-      t('chat.responses.marketTrends'),
-      t('chat.responses.riskAssessment'),
-      t('chat.responses.optimization')
+      "Based on your portfolio analysis, I recommend increasing your diversification in the technology sector. Your current allocation shows strong performance but could benefit from some rebalancing.",
+      "I've analyzed the latest market trends. There's been increased volatility in your crypto holdings. Consider taking some profits or adjusting your risk exposure.",
+      "Your portfolio shows excellent diversification. The S&P 500 ETF position provides good stability. Would you like me to suggest some growth opportunities?",
+      "Market sentiment analysis indicates potential opportunities in renewable energy sectors. Your current ESG exposure is minimal - shall I provide some recommendations?",
+      "I notice your cash position is quite conservative at 3%. Given current market conditions, this might be optimal for risk management."
     ]
     return responses[Math.floor(Math.random() * responses.length)]
   }
@@ -68,10 +66,10 @@ export default function Chat() {
   }
 
   const quickActions = [
-    { label: t('chat.quickActions.analyzePortfolio'), action: () => setInputValue('Analyze my current portfolio performance') },
-    { label: t('chat.quickActions.optimizeAllocation'), action: () => setInputValue('Suggest portfolio optimization strategies') },
-    { label: t('chat.quickActions.marketNews'), action: () => setInputValue('What are the latest market trends I should know about?') },
-    { label: t('chat.quickActions.riskAssessment'), action: () => setInputValue('Assess the risk level of my current holdings') },
+    { label: 'Analyze Portfolio', action: () => setInputValue('Analyze my current portfolio performance') },
+    { label: 'Optimize Allocation', action: () => setInputValue('Suggest portfolio optimization strategies') },
+    { label: 'Market News', action: () => setInputValue('What are the latest market trends I should know about?') },
+    { label: 'Risk Assessment', action: () => setInputValue('Assess the risk level of my current holdings') },
   ]
 
   return (
@@ -82,8 +80,8 @@ export default function Chat() {
         <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-hero mb-2">{t('common.agentName')}</h1>
-            <p className="text-sub">{t('chat.subtitle')}</p>
+            <h1 className="text-hero mb-2">platine agent</h1>
+            <p className="text-sub">Your AI financial copilot</p>
           </div>
 
           {/* Messages */}
@@ -96,14 +94,14 @@ export default function Chat() {
                 <div className={`max-w-[80%] ${
                   message.isUser 
                     ? 'bg-primary text-primary-foreground' 
-                    : 'card-silver'
+                    : 'card-platine'
                 } p-4 rounded-lg`}>
                   {!message.isUser && (
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium">P</span>
                       </div>
-                      <span className="text-sub text-xs">{t('common.agentName')}</span>
+                      <span className="text-sub text-xs">platine agent</span>
                     </div>
                   )}
                   <p className="text-nav">{message.text}</p>
@@ -116,12 +114,12 @@ export default function Chat() {
             
             {isLoading && (
               <div className="flex justify-start animate-fade-in-up">
-                <div className="card-silver p-4 rounded-lg">
+                <div className="card-platine p-4 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
                       <span className="text-xs font-medium">P</span>
                     </div>
-                    <span className="text-sub text-xs">{t('common.agentName')}</span>
+                    <span className="text-sub text-xs">platine agent</span>
                   </div>
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
@@ -149,14 +147,14 @@ export default function Chat() {
           </div>
 
           {/* Input Area */}
-          <div className="card-silver p-4 rounded-lg">
+          <div className="card-platine p-4 rounded-lg">
             <div className="flex space-x-4">
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder={t('chat.input.placeholder')}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Ask platine agent anything about your portfolio..."
                 className="flex-1 bg-transparent border-none outline-none text-nav placeholder:text-muted-foreground"
               />
               
@@ -165,7 +163,7 @@ export default function Chat() {
                 <button
                   onClick={handleFileUpload}
                   className="p-2 hover:bg-accent rounded-lg transition-colors"
-                  title={t('chat.upload.tooltip')}
+                  title="Upload CSV or PDF"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -178,7 +176,7 @@ export default function Chat() {
                   disabled={!inputValue.trim() || isLoading}
                   className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t('common.send')}
+                  Send
                 </button>
               </div>
             </div>

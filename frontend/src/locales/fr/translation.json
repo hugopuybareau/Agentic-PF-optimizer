@@ -1,84 +1,22 @@
 {
     "alerts": {
-        "success": "Opération effectuée avec succès !",
-        "title": "Alertes et Notifications",
-        "subtitle": "Restez informé sur votre portefeuille et les opportunités de marché",
-        "filters": {
-            "all": "Toutes",
-            "unread": "Non lues",
-            "risks": "Risques",
-            "opportunities": "Opportunités"
-        },
-        "empty": {
-            "title": "Aucune alerte trouvée",
-            "message": "Vous êtes à jour ! Aucune alerte {filter} pour le moment."
-        },
-        "actions": {
-            "dismiss": "Ignorer"
-        },
-        "preferences": {
-            "title": "Préférences d'alertes",
-            "riskAlerts": "Alertes de risque",
-            "riskAlertsDesc": "Recevez des notifications sur les risques et la volatilité du portefeuille"
-        }
+        "success": "Opération effectuée avec succès !"
+    },
+    "contact": {
+        "title": "Contactez-nous"
     },
     "chat": {
-        "title": "Discutez avec nous",
-        "subtitle": "Votre copilote financier IA",
-        "initial": {
-            "welcome": "Bonjour ! Je suis l'agent silver, votre copilote financier IA. Je vous aiderai à analyser votre portefeuille, comprendre les tendances du marché et prendre des décisions d'investissement éclairées. Que souhaitez-vous savoir sur vos investissements aujourd'hui ?"
-        },
-        "responses": {
-            "portfolioAnalysis": "Basé sur la composition de votre portefeuille, je remarque que vous avez une forte allocation dans les actions technologiques (45%). Bien que cela ait généré de solides rendements cette année (+23%), considérez la diversification vers d'autres secteurs comme la santé ou les biens de consommation pour réduire le risque de concentration. Votre ratio de Sharpe actuel de 1,8 est excellent, mais nous pourrions l'optimiser davantage.",
-            "cryptoVolatility": "Je vois que vous détenez du Bitcoin et de l'Ethereum. Les marchés crypto connaissent une forte volatilité due à l'incertitude réglementaire et aux facteurs macro. Considérez réduire votre allocation crypto de 15% à 8-10% de votre portefeuille total pour gérer le risque tout en maintenant une exposition à la hausse.",
-            "marketTrends": "Les conditions actuelles du marché montrent des signaux mitigés. La position hawkish de la Fed presse les actions de croissance, mais les actions de valeur dans les financières et l'énergie surperforment. Je recommande de rééquilibrer 10% de la croissance vers les actions de valeur à court terme.",
-            "riskAssessment": "Le bêta de votre portefeuille de 1,2 indique une volatilité plus élevée que le marché. Les ajouts récents d'actions small-cap ont augmenté votre profil de risque. Considérez ajouter des positions défensives dans les utilities ou REITs pour abaisser le bêta global du portefeuille à ~1,0.",
-            "optimization": "J'ai identifié plusieurs opportunités d'optimisation : 1) Réduire le chevauchement entre vos fonds large-cap, 2) Ajouter une exposition internationale (actuellement 5%, recommandé 15-20%), et 3) Considérer la récolte de pertes fiscales sur vos positions sous-performantes."
-        },
-        "quickActions": {
-            "analyzePortfolio": "Analyser le Portefeuille",
-            "optimizeAllocation": "Optimiser l'Allocation",
-            "marketNews": "Actualités du Marché",
-            "riskAssessment": "Évaluation des Risques"
-        },
-        "input": {
-            "placeholder": "Demandez à l'agent silver tout ce que vous voulez savoir sur votre portefeuille..."
-        },
-        "upload": {
-            "tooltip": "Télécharger CSV ou PDF"
-        }
-    },
-    "common": {
-        "agentName": "agent silver",
-        "send": "Envoyer",
-        "optional": "(optionnel)",
-        "processing": "Traitement en cours..."
+        "title": "Discutez avec nous"
     },
     "error": {
         "occured": "Une erreur est survenue",
         "unknown": "Erreur inconnue"
     },
-    "footer": {
-        "features": "Fonctionnalités",
-        "github": "GitHub",
-        "privacy": "Confidentialité",
-        "terms": "Conditions",
-        "copyright": "© {currentYear} agents silver. Tous droits réservés."
+    "Features": {
+        "title": "Fonctionnalités"
     },
     "landing": {
-        "welcome": "Bienvenue sur Agentic PF Optimizer",
-        "testPlatform": {
-            "title": "Bienvenue sur la plateforme de test des agents silver",
-            "subtitle": "Connectez-vous avec les identifiants qui vous ont été donnés"
-        },
-        "hero": {
-            "title": "Des agents si bons",
-            "subtitle": "qu'ils vous font gagner de l'argent",
-            "description": "Analyse de portefeuille alimentée par IA et informations de marché pour les investisseurs modernes"
-        },
-        "cta": {
-            "getStarted": "Commencer"
-        }
+        "welcome": "Bienvenue sur Agentic PF Optimizer"
     },
     "login": {
         "account?": "Vous avez déjà un compte ?",
@@ -98,45 +36,13 @@
         "welcomeBack": "Bon retour",
         "createAccount": "Créez votre compte",
         "signInToContinue": "Connectez-vous à votre compte pour continuer",
-        "joinUsToday": "Rejoignez-nous aujourd'hui et commencez à optimiser votre portefeuille",
-        "processing": "Traitement en cours..."
-    },
-    "navigation": {
-        "chat": "Chat",
-        "portfolio": "Portefeuille",
-        "alerts": "Alertes",
-        "toggleTheme": "Basculer le thème",
-        "login": "Se connecter"
-    },
-    "notFound": {
-        "title": "Page introuvable",
-        "message": "Oups ! Page non trouvée",
-        "returnHome": "Retour à l'Accueil"
+        "joinUsToday": "Rejoignez-nous aujourd'hui et commencez à optimiser votre portefeuille"
     },
     "portfolio": {
-        "title": "Vue d'ensemble du Portefeuille",
-        "subtitle": "Suivez vos investissements et performances",
-        "stats": {
-            "totalValue": "Valeur Totale",
-            "monthlyGain": "+2,3% ce mois",
-            "riskLevel": "Niveau de Risque",
-            "balancedAllocation": "Allocation équilibrée",
-            "diversification": "Diversification",
-            "wellDiversified": "Bien diversifié",
-            "monthlyReturn": "Rendement Mensuel",
-            "outperforming": "Surperforme le S&P"
-        },
-        "risk": {
-            "medium": "Moyen"
-        },
-        "holdings": {
-            "title": "Positions"
-        },
-        "charts": {
-            "allocation": "Allocation",
-            "performance": "Performance 6M"
-        },
         "overview": "Vue d'ensemble du portefeuille"
+    },
+    "notFound": {
+        "title": "Page introuvable"
     },
     "close": "Fermer"
 }

@@ -171,7 +171,7 @@ export default function LoginModal({
                                     
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-foreground" htmlFor="full_name">
-                                            {t('login.fullName')} <span className="text-muted-foreground text-xs">(optional)</span>
+                                            {t('login.fullName')} <span className="text-muted-foreground text-xs">{t('common.optional')}</span>
                                         </label>
                                         <div className="form-field-focus relative">
                                             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -228,7 +228,7 @@ export default function LoginModal({
                                 {loading ? (
                                     <div className="flex items-center justify-center space-x-2">
                                         <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                                        <span>Processing...</span>
+                                        <span>{t('common.processing')}</span>
                                     </div>
                                 ) : (
                                     <div className="flex items-center justify-center space-x-2">

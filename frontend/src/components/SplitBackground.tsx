@@ -82,7 +82,7 @@ export function SplitBackground() {
             
             {/* Animated Star Particles */}
             <div className="absolute inset-0 pointer-events-none">
-                <style jsx>{`
+                <style>{`
                     @keyframes moveHorizontal {
                         0% { transform: translateX(-10vw); }
                         100% { transform: translateX(110vw); }

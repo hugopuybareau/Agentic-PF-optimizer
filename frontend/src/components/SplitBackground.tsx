@@ -1,7 +1,7 @@
 // frontend/src/components/SplitBackground.tsx
 
 import { useTheme } from '@/hooks/use-theme';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 
 export function SplitBackground() {
     const { theme } = useTheme();
@@ -36,11 +36,11 @@ export function SplitBackground() {
     console.log('SplitBackground - Current theme:', currentTheme);
     console.log('SplitBackground - Image path:', imagePath);
 
-    // Memoize star generation to prevent recreation on every render
-    const stars = useMemo(() => {
-        const generatedStars = [];
+    // Generate star positions and animation delays
+    const generateStars = () => {
+        const stars = [];
         for (let i = 0; i < 50; i++) {
-            generatedStars.push({
+            stars.push({
                 id: i,
                 left: Math.random() * 100,
                 top: Math.random() * 100,
@@ -53,8 +53,10 @@ export function SplitBackground() {
                 moveDirection: Math.random() < 0.33 ? 'horizontal' : Math.random() < 0.66 ? 'vertical' : 'diagonal',
             });
         }
-        return generatedStars;
-    }, []); // Empty dependency array - only generate once
+        return stars;
+    };
+
+    const stars = generateStars();
 
     return (
         <div className="fixed inset-0 z-0 pointer-events-none flex w-full h-full overflow-hidden">

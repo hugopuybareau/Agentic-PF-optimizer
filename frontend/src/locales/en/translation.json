@@ -45,7 +45,11 @@
         },
         "placeholder": "Ask silver agent anything about your portfolio...",
         "uploadFile": "Upload CSV or PDF",
-        "send": "Send"
+        "send": "Send",
+        "clearSession": "Clear Session",
+        "clearSessionTooltip": "Clear session and start fresh",
+        "errorOccurred": "An error occurred",
+        "failedToSend": "Failed to send message. Please try again."
     },
     "error": {
         "occured": "An error occurred",

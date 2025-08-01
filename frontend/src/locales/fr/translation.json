@@ -45,7 +45,11 @@
         },
         "placeholder": "Demandez n'importe quoi à silver agent sur votre portefeuille...",
         "uploadFile": "Télécharger CSV ou PDF",
-        "send": "Envoyer"
+        "send": "Envoyer",
+        "clearSession": "Effacer la Session",
+        "clearSessionTooltip": "Effacer la session et recommencer",
+        "errorOccurred": "Une erreur est survenue",
+        "failedToSend": "Échec de l'envoi du message. Veuillez réessayer."
     },
     "error": {
         "occured": "Une erreur est survenue",

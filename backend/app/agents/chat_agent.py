@@ -21,8 +21,7 @@ logger = logging.getLogger(__name__)
 class ChatAgent:
     def __init__(self):
         self.llm = AzureChatOpenAI(
-            azure_endpoint="https://hugo-mbm3qhjz-swedencentral.cognitiveservices.azure.com/",
-            azure_deployment="gpt-4o-mini",
+            azure_endpoint="https://hugo-mbm3qhjz-swedencentral.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2025-01-01-preview",
             api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
             api_version="2025-01-01-preview",
             temperature=0.3

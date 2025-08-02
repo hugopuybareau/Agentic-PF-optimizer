@@ -19,9 +19,8 @@ sqlalchemy
 python-jose
 psycopg2-binary
 passlib[bcrypt]
+bcrypt>=3.2,<4
 pydantic[email]
-
-# Dev
 redis
 pytest
 pytest-asyncio

@@ -33,7 +33,6 @@ export default function Chat() {
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
 
     const {
         streamedText,
@@ -45,41 +44,31 @@ export default function Chat() {
         cancelStream,
         reset: resetStream,
     } = useStreamingText({
-        onComplete: (fullText, responseMetadata) => {
-            // Replace the streaming message with the final message
-            setMessages(prev => prev.map(msg => 
-                msg.id === streamingMessageId 
+        onComplete: (fullText, responseMetadata, aiMessageId) => {
+            setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId
                     ? { ...msg, text: fullText, isStreaming: false }
                     : msg
             ));
-            
-            // Handle additional response metadata
+
             if (responseMetadata) {
                 if (responseMetadata.session_id && responseMetadata.session_id !== sessionId) {
                     setSessionId(responseMetadata.session_id);
                 }
-                
                 if (responseMetadata.show_form && responseMetadata.form_data) {
                     console.log('Portfolio form data:', responseMetadata.form_data);
                 }
-                
                 if (responseMetadata.portfolio_summary) {
                     console.log('Portfolio summary:', responseMetadata.portfolio_summary);
                 }
             }
-            
-            setStreamingMessageId(null);
         },
-        onError: (errorMessage) => {
-            // Replace streaming message with error message
-            if (streamingMessageId) {
-                setMessages(prev => prev.map(msg => 
-                    msg.id === streamingMessageId 
-                        ? { ...msg, text: `Error: ${errorMessage}`, isStreaming: false }
-                        : msg
-                ));
-            }
-            setStreamingMessageId(null);
+        onError: (errorMessage, aiMessageId) => {
+            setMessages(prev => prev.map(msg =>
+                msg.id === aiMessageId
+                    ? { ...msg, text: `Error: ${errorMessage}`, isStreaming: false }
+                    : msg
+            ));
             setError(errorMessage);
         },
         onStart: () => {
@@ -91,20 +80,19 @@ export default function Chat() {
         if (!inputValue.trim() || isStreaming) return;
 
         const userMessage: Message = {
-            id: Date.now().toString(),
+            id: crypto.randomUUID(),
             text: inputValue,
             isUser: true,
             timestamp: new Date(),
         };
 
-        // Add user message
         setMessages((prev) => [...prev, userMessage]);
         const messageText = inputValue;
         setInputValue('');
         setError(null);
 
-        // Create streaming AI message placeholder
-        const aiMessageId = (Date.now() + 1).toString();
+        // Create streaming AI message placeholder with a unique ID
+        const aiMessageId = crypto.randomUUID();
         const aiMessage: Message = {
             id: aiMessageId,
             text: '',
@@ -112,20 +100,18 @@ export default function Chat() {
             timestamp: new Date(),
             isStreaming: true,
         };
-        
+
         setMessages((prev) => [...prev, aiMessage]);
-        setStreamingMessageId(aiMessageId);
 
         try {
             const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
             await startStreaming(`${API_BASE_URL}/chat/message/stream`, {
                 message: messageText,
                 session_id: sessionId || undefined,
-            });
+            }, aiMessageId);
         } catch (err) {
             console.error('Streaming failed, fallback to regular API:', err);
-            
-            // Fallback to non-streaming API
+
             try {
                 const response = await chatApi.sendMessage({
                     message: messageText,
@@ -136,23 +122,19 @@ export default function Chat() {
                     setSessionId(response.session_id);
                 }
 
-                // Update the streaming message with the complete response
-                setMessages(prev => prev.map(msg => 
-                    msg.id === aiMessageId 
+                setMessages(prev => prev.map(msg =>
+                    msg.id === aiMessageId
                         ? { ...msg, text: response.message, isStreaming: false }
                         : msg
                 ));
 
-                // Handle special UI hints or form display
                 if (response.show_form && response.form_data) {
                     console.log('Portfolio form data:', response.form_data);
                 }
-
                 if (response.portfolio_summary) {
                     console.log('Portfolio summary:', response.portfolio_summary);
                 }
-                
-                setStreamingMessageId(null);
+
             } catch (fallbackErr) {
                 const errorMessage =
                     fallbackErr instanceof ApiError
@@ -160,15 +142,12 @@ export default function Chat() {
                         : t('chat.failedToSend');
 
                 setError(errorMessage);
-                
-                // Update streaming message with error
-                setMessages(prev => prev.map(msg => 
-                    msg.id === aiMessageId 
+
+                setMessages(prev => prev.map(msg =>
+                    msg.id === aiMessageId
                         ? { ...msg, text: errorMessage, isStreaming: false }
                         : msg
                 ));
-                
-                setStreamingMessageId(null);
             }
         }
     };
@@ -180,7 +159,7 @@ export default function Chat() {
                 setSessionId(null);
                 setMessages(getInitialMessages(t));
                 setError(null);
-                
+
                 toast({
                     title: t('chat.clearSession'),
                     description: t('chat.sessionClearedSuccessfully'),
@@ -188,11 +167,11 @@ export default function Chat() {
                 });
             } catch (err) {
                 console.error('Failed to clear session:', err);
-                
-                const errorMessage = err instanceof ApiError 
-                    ? err.message 
+
+                const errorMessage = err instanceof ApiError
+                    ? err.message
                     : t('chat.failedToClearSession');
-                
+
                 toast({
                     title: t('chat.clearSession'),
                     description: errorMessage,
@@ -266,8 +245,8 @@ export default function Chat() {
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto space-y-6 mb-6">
                         {messages.map((message) => {
-                            // Handle streaming messages
-                            if (!message.isUser && message.id === streamingMessageId) {
+                            // Handle streaming AI messages
+                            if (!message.isUser && message.isStreaming) {
                                 return (
                                     <StreamingMessage
                                         key={message.id}

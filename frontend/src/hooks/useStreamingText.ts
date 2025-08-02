@@ -12,8 +12,8 @@ interface StreamingChunk {
 }
 
 interface UseStreamingTextOptions {
-    onComplete?: (fullText: string, metadata: any) => void;
-    onError?: (error: string) => void;
+    onComplete?: (fullText: string, metadata: any, aiMessageId: string) => void;
+    onError?: (error: string, aiMessageId: string) => void;
     onStart?: () => void;
 }
 
@@ -27,7 +27,7 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
     const abortControllerRef = useRef<AbortController | null>(null);
     const fullTextRef = useRef('');
 
-    const startStreaming = useCallback(async (url: string, requestBody: any) => {
+    const startStreaming = useCallback(async (url: string, requestBody: any, aiMessageId: string) => {
         // Cancel any existing stream
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -103,14 +103,14 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
                                     
                                 case 'complete':
                                     setIsStreaming(false);
-                                    options.onComplete?.(fullTextRef.current, metadata);
+                                    options.onComplete?.(fullTextRef.current, metadata, chunk.aiMessageId);
                                     break;
                                     
                                 case 'error':
                                     setError(chunk.error || 'Unknown streaming error');
                                     setIsStreaming(false);
                                     setIsThinking(false);
-                                    options.onError?.(chunk.error || 'Unknown streaming error');
+                                    options.onError?.(chunk.error || 'Unknown streaming error', chunk.aiMessageId);
                                     break;
                             }
                         } catch (parseError) {
@@ -129,7 +129,7 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
             setError(err.message || 'Streaming failed');
             setIsStreaming(false);
             setIsThinking(false);
-            options.onError?.(err.message || 'Streaming failed');
+            options.onError?.(err.message || 'Streaming failed', err.aiMessageId || null);
         }
     }, [options]);
 

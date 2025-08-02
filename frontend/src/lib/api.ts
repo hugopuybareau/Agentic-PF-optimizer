@@ -120,6 +120,10 @@ export const chatApi = {
         });
     },
 
+    getSession: async (sessionId: string): Promise<any> => {
+        return fetchApi(`/chat/session/${sessionId}`);
+    },
+
     getSessionPortfolio: async (sessionId: string): Promise<any> => {
         return fetchApi(`/chat/session/${sessionId}/portfolio`);
     },

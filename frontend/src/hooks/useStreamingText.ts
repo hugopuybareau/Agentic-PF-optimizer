@@ -26,6 +26,7 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
     
     const abortControllerRef = useRef<AbortController | null>(null);
     const fullTextRef = useRef('');
+    const metadataRef = useRef<any>(null);
 
     const startStreaming = useCallback(async (url: string, requestBody: any, aiMessageId: string) => {
         // Cancel any existing stream
@@ -40,6 +41,7 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
         setIsThinking(true);
         setIsStreaming(true);
         fullTextRef.current = '';
+        metadataRef.current = null;
         
         options.onStart?.();
 
@@ -89,6 +91,7 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
                             
                             switch (chunk.type) {
                                 case 'metadata':
+                                    metadataRef.current = chunk;
                                     setMetadata(chunk);
                                     setIsThinking(false); // First chunk received
                                     break;
@@ -103,7 +106,7 @@ export const useStreamingText = (options: UseStreamingTextOptions = {}) => {
                                     
                                 case 'complete':
                                     setIsStreaming(false);
-                                    options.onComplete?.(fullTextRef.current, metadata, chunk.aiMessageId);
+                                    options.onComplete?.(fullTextRef.current, metadataRef.current, aiMessageId);
                                     break;
                                     
                                 case 'error':

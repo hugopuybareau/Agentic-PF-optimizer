@@ -51,7 +51,8 @@
         "sessionClearedSuccessfully": "Session cleared successfully! You can start a fresh conversation.",
         "failedToClearSession": "Failed to clear session. Please try again.",
         "errorOccurred": "An error occurred",
-        "failedToSend": "Failed to send message. Please try again."
+        "failedToSend": "Failed to send message. Please try again.",
+        "loadingSession": "Restoring session..."
     },
     "error": {
         "occured": "An error occurred",

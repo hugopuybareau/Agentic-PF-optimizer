@@ -51,7 +51,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### API Structure
 - **Chat System**: `/api/chat/*` 
   - `POST /api/chat/message` - Send chat messages for portfolio building
-  - `POST /api/chat/submit-portfolio` - Submit built portfolio for analysis
+  - `POST /api/chat/message/stream` - Streaming chat messages with real-time responses
+  - `GET /api/chat/session/{session_id}` - Get full session data including messages and portfolio
   - `GET /api/chat/session/{session_id}/portfolio` - Get session portfolio state
   - `DELETE /api/chat/session/{session_id}` - Clear chat session
   - `GET /api/chat/suggestions` - Get asset suggestions and templates
@@ -96,9 +97,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Intent Classification**: Handles add_asset, remove_asset, modify_asset, complete_portfolio, etc.
 - **Entity Extraction**: Extracts asset details (ticker, amount, type) from natural language
 - **Context Awareness**: Resolves references like "the same amount", "that stock"
-- **Session Persistence**: Redis-backed sessions with automatic expiration
+- **Session Persistence**: Redis-backed sessions with automatic expiration and cross-tab restoration
+- **Tab-Aware Session Restoration**: Sessions persist when switching browser tabs and automatically restore chat history
 - **Form Generation**: Converts chat-built portfolio to structured form for review
 - **Asset Suggestions**: Provides common stocks, cryptos, and portfolio templates
+
+#### Session Management
+- **Backend Storage**: Sessions stored in Redis with chat messages and portfolio building state
+- **Frontend Persistence**: Session ID stored in localStorage for cross-tab continuity
+- **Automatic Restoration**: When returning to chat tab, full session including messages is restored from backend
+- **Visibility API Integration**: Uses browser visibility API to detect tab changes and trigger restoration
+- **Graceful Degradation**: Falls back to in-memory storage if Redis unavailable
 
 ## Development Patterns
 

@@ -1,6 +1,6 @@
 // frontend/src/pages/Chat.tsx
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
 import { StreamingMessage } from '@/components/StreamingMessage';
@@ -25,6 +25,9 @@ const getInitialMessages = (t: (key: string) => string): Message[] => [
     },
 ];
 
+const SESSION_STORAGE_KEY = 'chat_session_id';
+const MESSAGES_STORAGE_KEY = 'chat_messages';
+
 export default function Chat() {
     const { t } = useTranslation();
     const { toast } = useToast();
@@ -32,17 +35,15 @@ export default function Chat() {
     const [inputValue, setInputValue] = useState('');
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isLoadingSession, setIsLoadingSession] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const {
         streamedText,
         isStreaming,
         isThinking,
-        metadata,
-        error: streamError,
         startStreaming,
         cancelStream,
-        reset: resetStream,
     } = useStreamingText({
         onComplete: (fullText, responseMetadata, aiMessageId) => {
             setMessages(prev => prev.map(msg =>
@@ -75,6 +76,74 @@ export default function Chat() {
             setError(null);
         }
     });
+
+    // Session restoration on component mount and tab visibility changes
+    useEffect(() => {
+        const restoreSession = async () => {
+            try {
+                // Try to get saved session ID
+                const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+                
+                if (savedSessionId && savedSessionId !== sessionId) {
+                    try {
+                        const sessionData = await chatApi.getSession(savedSessionId);
+                        
+                        // If session exists, restore it
+                        if (sessionData && sessionData.messages) {
+                            setSessionId(savedSessionId);
+                            
+                            // Restore messages from backend
+                            const restoredMessages = sessionData.messages.map((msg: { id: string; text: string; isUser: boolean; timestamp: string }) => ({
+                                id: msg.id,
+                                text: msg.text,
+                                isUser: msg.isUser,
+                                timestamp: new Date(msg.timestamp)
+                            }));
+                            
+                            if (restoredMessages.length > 0) {
+                                setMessages(restoredMessages);
+                            } else {
+                                setMessages(getInitialMessages(t));
+                            }
+                        } else {
+                            localStorage.removeItem(SESSION_STORAGE_KEY);
+                        }
+                    } catch (err) {
+                        // Clear localStorage if session not found
+                        localStorage.removeItem(SESSION_STORAGE_KEY);
+                    }
+                }
+            } catch (error) {
+                console.error('Error in session restoration:', error);
+            } finally {
+                setIsLoadingSession(false);
+            }
+        };
+        
+        // Initial restoration on mount
+        restoreSession();
+        
+        // Listen for tab visibility changes
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                restoreSession();
+            }
+        };
+        
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        // Cleanup event listener
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [sessionId, t]);
+
+    // Save session ID to localStorage (messages are stored in backend)
+    useEffect(() => {
+        if (sessionId) {
+            localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+        }
+    }, [sessionId]);
 
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isStreaming) return;
@@ -159,6 +228,10 @@ export default function Chat() {
                 setSessionId(null);
                 setMessages(getInitialMessages(t));
                 setError(null);
+                
+                // Clear localStorage
+                localStorage.removeItem(SESSION_STORAGE_KEY);
+                localStorage.removeItem(MESSAGES_STORAGE_KEY);
 
                 toast({
                     title: t('chat.clearSession'),
@@ -244,6 +317,12 @@ export default function Chat() {
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto space-y-6 mb-6">
+                        {isLoadingSession && (
+                            <div className="flex justify-center items-center h-32">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                <span className="ml-2 text-muted-foreground">{t('chat.loadingSession')}</span>
+                            </div>
+                        )}
                         {messages.map((message) => {
                             // Handle streaming AI messages
                             if (!message.isUser && message.isStreaming) {

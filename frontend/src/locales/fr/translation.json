@@ -51,7 +51,8 @@
         "sessionClearedSuccessfully": "Session effacée avec succès ! Vous pouvez commencer une nouvelle conversation.",
         "failedToClearSession": "Échec de l'effacement de la session. Veuillez réessayer.",
         "errorOccurred": "Une erreur est survenue",
-        "failedToSend": "Échec de l'envoi du message. Veuillez réessayer."
+        "failedToSend": "Échec de l'envoi du message. Veuillez réessayer.",
+        "loadingSession": "Restauration de la session..."
     },
     "error": {
         "occured": "Une erreur est survenue",

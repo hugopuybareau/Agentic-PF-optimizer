@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 import requests
-from langchain.prompts import ChatPromptTemplate
+from langchain.schema import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 from pydantic import SecretStr
 
@@ -135,8 +135,13 @@ class ClassificationTool:
             temperature=0.1
         )
 
-        self.classification_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a financial news classifier. Analyze the given news article and classify it with the following criteria:
+
+    def classify_news_item(self, news_item: NewsItem, asset: Asset) -> NewsItem:
+        try:
+            asset_info = f"{asset.type}: {getattr(asset, 'ticker', '') or getattr(asset, 'symbol', '') or str(asset)}"
+
+            messages: list[BaseMessage] = [
+                SystemMessage(content="""You are a financial news classifier. Analyze the given news article and classify it with the following criteria:
 
                 1. SENTIMENT: positive, negative, or neutral
                 2. IMPACT: high, medium, or low (how much this could affect the asset price)
@@ -151,20 +156,10 @@ class ClassificationTool:
                     "risk_type": "market_risk/regulatory_risk/operational_risk/credit_risk/other",
                     "reasoning": "Brief explanation of your classification"
                 }"""),
-            ("human", "Asset: {asset_info}\nNews Title: {title}\nNews Content: {content}")
-        ])
+                HumanMessage(content=f"Asset: {asset_info}\nNews Title: {news_item.title}\nNews Content: {news_item.snippet}")
+            ]
 
-    def classify_news_item(self, news_item: NewsItem, asset: Asset) -> NewsItem:
-        try:
-            asset_info = f"{asset.type}: {getattr(asset, 'ticker', '') or getattr(asset, 'symbol', '') or str(asset)}"
-
-            response = self.llm.invoke(
-                self.classification_prompt.format_messages(
-                    asset_info=asset_info,
-                    title=news_item.title,
-                    content=news_item.snippet
-                )
-            )
+            response = self.llm.invoke(messages)
 
             try:
                 classification = safe_json_parse(response.content)
@@ -212,8 +207,16 @@ class AnalysisTool:
             temperature=0.3
         )
 
-        self.analysis_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are an expert financial advisor analyzing portfolio assets based on recent news.
+
+    def analyze_asset(self, asset: Asset, classified_news: list[NewsItem]) -> AnalysisResult:
+        try:
+            asset_key = self._get_asset_key(asset)
+
+            news_summary = self._prepare_news_summary(classified_news)
+            asset_info = self._get_asset_info(asset)
+
+            messages: list[BaseMessage] = [
+                SystemMessage(content="""You are an expert financial advisor analyzing portfolio assets based on recent news.
 
                 Provide a comprehensive analysis including:
                 1. SENTIMENT_SUMMARY: Overall sentiment from the news (2-3 sentences)
@@ -223,32 +226,20 @@ class AnalysisTool:
 
                 Be specific, actionable, and focus on risk management and optimization opportunities.
                 Consider both short-term news impacts and long-term portfolio health."""),
-                            ("human", """Asset: {asset_info}
+                HumanMessage(content=f"""Asset: {asset_info}
                 Recent News Analysis:
                 {news_summary}
 
                 Please provide your analysis in JSON format:
-                {
+                {{
                     "sentiment_summary": "...",
                     "risk_assessment": "...",
                     "recommendations": ["rec1", "rec2", "rec3"],
                     "confidence_score": 0.0-1.0
-                }""")
-        ])
+                }}""")
+            ]
 
-    def analyze_asset(self, asset: Asset, classified_news: list[NewsItem]) -> AnalysisResult:
-        try:
-            asset_key = self._get_asset_key(asset)
-
-            news_summary = self._prepare_news_summary(classified_news)
-            asset_info = self._get_asset_info(asset)
-
-            response = self.llm.invoke(
-                self.analysis_prompt.format_messages(
-                    asset_info=asset_info,
-                    news_summary=news_summary
-                )
-            )
+            response = self.llm.invoke(messages)
 
             analysis = safe_json_parse(response.content)
             result = AnalysisResult(
@@ -332,8 +323,14 @@ class PortfolioSummarizerTool:
             temperature=0.2
         )
 
-        self.summary_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a senior portfolio manager providing a comprehensive portfolio digest.
+
+    def create_portfolio_digest(self, analysis_results: list[AnalysisResult]) -> dict:
+        try:
+            # prepare analysis summary
+            analysis_summary = self._prepare_analysis_summary(analysis_results)
+
+            messages: list[BaseMessage] = [
+                SystemMessage(content="""You are a senior portfolio manager providing a comprehensive portfolio digest.
 
                 Synthesize the individual asset analyses into:
                 1. EXECUTIVE_SUMMARY: 2-3 sentence overview of portfolio health
@@ -344,22 +341,13 @@ class PortfolioSummarizerTool:
                 6. RISK_SCORE: Overall portfolio risk score (1-10, where 10 is highest risk)
 
                 Be concise but actionable. Focus on portfolio-level insights, not individual assets."""),
-                            ("human", """Portfolio Analysis Results:
-                {analysis_results}
+                HumanMessage(content=f"""Portfolio Analysis Results:
+                {analysis_summary}
 
                 Please provide a comprehensive portfolio digest.""")
-        ])
+            ]
 
-    def create_portfolio_digest(self, analysis_results: list[AnalysisResult]) -> dict:
-        try:
-            # prepare analysis summary
-            analysis_summary = self._prepare_analysis_summary(analysis_results)
-
-            response = self.llm.invoke(
-                self.summary_prompt.format_messages(
-                    analysis_results=analysis_summary
-                )
-            )
+            response = self.llm.invoke(messages)
 
             digest_content = response.content
 

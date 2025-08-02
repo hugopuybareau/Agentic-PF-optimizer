@@ -4,7 +4,7 @@ import json
 import logging
 import os
 
-from langchain.prompts import ChatPromptTemplate
+from langchain.schema import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 from langgraph.graph import END, StateGraph
 from pydantic import SecretStr
@@ -32,14 +32,12 @@ class ChatAgent:
     def _build_graph(self) -> StateGraph:
         workflow = StateGraph(ChatAgentState)
 
-        # Define nodes
         workflow.add_node("classify_intent", self._classify_intent)
         workflow.add_node("extract_entities", self._extract_entities)
         workflow.add_node("update_portfolio", self._update_portfolio)
         workflow.add_node("generate_response", self._generate_response)
         workflow.add_node("prepare_form", self._prepare_form)
 
-        # Define edges
         workflow.set_entry_point("classify_intent")
         workflow.add_edge("classify_intent", "extract_entities")
         workflow.add_edge("extract_entities", "update_portfolio")
@@ -57,13 +55,10 @@ class ChatAgent:
         return workflow.compile() # type: ignore
 
     def _classify_intent(self, state: ChatAgentState) -> ChatAgentState:
-        """Classify user intent from their message"""
-
         session = state["session"]
 
-        # Build conversation history
-        messages = [
-            ("system", """You are a portfolio assistant helping users build their investment portfolio.
+        messages: list[BaseMessage] = [
+            SystemMessage(content="""You are a portfolio assistant helping users build their investment portfolio.
             Classify the user's intent into one of these categories:\n\n
 
             1. "add_asset" - User wants to add an asset (stock, crypto, real estate, etc.)
@@ -79,21 +74,16 @@ class ChatAgent:
             Return ONLY the intent category, nothing else.""")
         ]
 
-        # Add recent conversation history (last 10 messages)
         for msg in session.messages[-10:]:
             if msg.role == "user":
-                messages.append(("human", msg.content))
+                messages.append(HumanMessage(content=msg.content))
             else:
-                messages.append(("assistant", msg.content))
+                messages.append(AIMessage(content=msg.content))
 
-        # Add current message
-        messages.append(("human", state["user_message"]))
-
-        intent_prompt = ChatPromptTemplate.from_messages(messages)
+        messages.append(HumanMessage(content=state["user_message"]))
 
         try:
-            response = self.llm.invoke(intent_prompt.format_messages())
-            # If response.content is a list, extract the first string element
+            response = self.llm.invoke(messages)
             intent_text = response.content
             if isinstance(intent_text, list):
                 # Find the first string in the list
@@ -106,17 +96,14 @@ class ChatAgent:
         return state
 
     def _extract_entities(self, state: ChatAgentState) -> ChatAgentState:
-        """Extract relevant entities based on intent"""
-
         if state["intent"] not in ["add_asset", "modify_asset", "remove_asset"]:
             state["entities"] = {}
             return state
 
         session = state["session"]
 
-        # Build messages with conversation history
-        messages = [
-            ("system", """Extract investment details from the user message.
+        messages: list[BaseMessage] = [
+            SystemMessage(content="""Extract investment details from the user message.
             Look for:
             - Asset type (stock, crypto, real_estate, mortgage, cash)
             - Asset identifier (ticker, symbol, address, etc.)
@@ -134,21 +121,19 @@ class ChatAgent:
             If information is missing, include what you found and mark missing fields as null.""")
         ]
 
-        # Add recent conversation history for context
         for msg in session.messages[-6:]:
             if msg.role == "user":
-                messages.append(("human", msg.content))
+                messages.append(HumanMessage(content=msg.content))
             else:
-                messages.append(("assistant", msg.content))
+                messages.append(AIMessage(content=msg.content))
 
-        # Add current message
-        messages.append(("human", state["user_message"]))
-
-        entity_prompt = ChatPromptTemplate.from_messages(messages)
+        messages.append(HumanMessage(content=state["user_message"]))
 
         try:
-            response = self.llm.invoke(entity_prompt.format_messages())
+            response = self.llm.invoke(messages)
+            logger.info(f"LLM response type: {type(response)}, value: {repr(response)}")
             entities = safe_json_parse(response.content)
+            logger.info(f"entities: {repr(entities)}")
             state["entities"] = entities
         except Exception as e:
             logger.error(f"Entity extraction failed: {e}")
@@ -157,8 +142,6 @@ class ChatAgent:
         return state
 
     def _update_portfolio(self, state: ChatAgentState) -> ChatAgentState:
-        """Update the portfolio based on extracted entities"""
-
         session = state["session"]
         entities = state["entities"]
         intent = state["intent"]
@@ -199,23 +182,17 @@ class ChatAgent:
         return state
 
     def _should_show_form(self, state: ChatAgentState) -> str:
-        """Decide whether to show form or continue conversation"""
-
         session = state["session"]
 
-        # Show form if user indicated completion or has enough assets
         if (session.portfolio_state.is_complete or
             (len(session.portfolio_state.assets) >= 3 and state["intent"] == "add_asset")):
             return "show_form"
-
         return "continue"
 
     def _prepare_form(self, state: ChatAgentState) -> ChatAgentState:
-        """Prepare form data for frontend"""
-
         session = state["session"]
 
-        # Convert assets to form-friendly format
+        # convert assets to form-friendly format
         form_assets = []
         for asset in session.portfolio_state.assets:
             if isinstance(asset, Stock):
@@ -271,14 +248,10 @@ class ChatAgent:
         return state
 
     def _generate_response(self, state: ChatAgentState) -> ChatAgentState:
-        """Generate conversational response"""
-
         session = state["session"]
         intent = state["intent"]
-
-        # Build conversation history
-        messages = [
-            ("system", """You are a friendly portfolio assistant helping users build their investment portfolio.
+        messages: list[BaseMessage] = [
+            SystemMessage(content="""You are a friendly portfolio assistant helping users build their investment portfolio.
 
             Current portfolio state:
             {portfolio_state}\n\n
@@ -295,47 +268,30 @@ class ChatAgent:
             - Keep responses concise but informative
             - Remember what the user has already told you\n\n
 
-            Generate an appropriate response based on the conversation history.""")
+            Generate an appropriate response based on the conversation history.""".format(
+                portfolio_state=self._get_portfolio_summary(session.portfolio_state),
+                intent=intent,
+                entities=json.dumps(state["entities"])
+            ))
         ]
 
-        # Add conversation history
         for msg in session.messages[-8:]:
             if msg.role == "user":
-                messages.append(("human", msg.content))
+                messages.append(HumanMessage(content=msg.content))
             else:
-                messages.append(("assistant", msg.content))
+                messages.append(AIMessage(content=msg.content))
 
-        # Add current message
-        messages.append(("human", state["user_message"]))
+        messages.append(HumanMessage(content=state["user_message"]))
 
         try:
-            portfolio_summary = self._get_portfolio_summary(session.portfolio_state)
-
-            # Format the system message with current state
-            formatted_messages = []
-            for role, content in messages:
-                if role == "system":
-                    content = content.format(
-                        portfolio_state=portfolio_summary,
-                        intent=intent,
-                        entities=json.dumps(state["entities"])
-                    )
-                formatted_messages.append((role, content))
-
-            response = self.llm.invoke(
-                ChatPromptTemplate.from_messages(formatted_messages).format_messages()
-            )
-
-            # Ensure response.content is always a string
+            response = self.llm.invoke(messages)
             content = response.content
             if isinstance(content, list):
-                # Join list elements as string, or extract first string if possible
                 content = " ".join(str(item) for item in content if isinstance(item, str | dict))
                 if not isinstance(content, str):
                     content = str(content)
             state["response"] = content
 
-            # Add UI hints based on context
             state["ui_hints"] = {
                 "show_portfolio_summary": len(session.portfolio_state.assets) > 0,
                 "suggest_asset_types": len(session.portfolio_state.assets) < 2,
@@ -349,8 +305,6 @@ class ChatAgent:
         return state
 
     def _create_asset_from_entities(self, entities: dict) -> Asset | None:
-        """Create appropriate asset object from extracted entities"""
-
         asset_type = entities.get("type", "").lower()
 
         try:
@@ -396,8 +350,6 @@ class ChatAgent:
         return None
 
     def _asset_matches(self, asset: Asset, identifier: str) -> bool:
-        """Check if asset matches the given identifier"""
-
         identifier = identifier.upper()
 
         if isinstance(asset, Stock):
@@ -439,8 +391,6 @@ class ChatAgent:
         return entities
 
     def _get_portfolio_summary(self, portfolio_state: PortfolioBuildingState) -> str:
-        """Generate human-readable portfolio summary"""
-
         if not portfolio_state.assets:
             return "No assets in portfolio yet"
 
@@ -472,8 +422,6 @@ class ChatAgent:
         return "\n".join(summary_parts)
 
     def _suggest_missing_assets(self, current_assets: list[Asset]) -> list[dict]:
-        """Suggest common asset types that might be missing"""
-
         current_types = {asset.type for asset in current_assets}
         suggestions = []
 
@@ -498,9 +446,6 @@ class ChatAgent:
         return suggestions
 
     def process_message(self, session_id: str, user_message: str, user_id: str | None = None) -> dict:
-        """Process a chat message and return response"""
-
-        # Get or create session
         session = self.session_storage.get(session_id)
         if not session:
             session = ChatSession(
@@ -510,7 +455,6 @@ class ChatAgent:
 
         session.add_message("user", user_message)
 
-        # Run the graph
         initial_state = {
             "session": session,
             "user_message": user_message,
@@ -527,16 +471,13 @@ class ChatAgent:
         try:
             result = self.graph.invoke(initial_state) # type: ignore
 
-            # Add assistant message to session
             session.add_message("assistant", result["response"], {
                 "ui_hints": result.get("ui_hints", {}),
                 "show_form": result.get("show_form", False)
             })
 
-            # Save session
             self.session_storage.set(session_id, session)
 
-            # Prepare response
             response = {
                 "message": result["response"],
                 "session_id": session_id,
@@ -563,18 +504,13 @@ class ChatAgent:
             }
 
     def get_session_portfolio(self, session_id: str) -> Portfolio | None:
-        """Get the current portfolio for a session"""
-
         session = self.session_storage.get(session_id)
         if not session:
             return None
 
         if session.portfolio_state.assets:
             return Portfolio(assets=session.portfolio_state.assets)
-
         return None
 
     def clear_session(self, session_id: str):
-        """Clear a chat session"""
-
         self.session_storage.delete(session_id)

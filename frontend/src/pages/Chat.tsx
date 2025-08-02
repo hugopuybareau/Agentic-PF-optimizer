@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
 import { chatApi, ApiError } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 type Message = {
     id: string;
@@ -23,6 +24,7 @@ const getInitialMessages = (t: (key: string) => string): Message[] => [
 
 export default function Chat() {
     const { t } = useTranslation();
+    const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>(getInitialMessages(t));
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -101,8 +103,24 @@ export default function Chat() {
                 setSessionId(null);
                 setMessages(getInitialMessages(t));
                 setError(null);
+                
+                toast({
+                    title: t('chat.clearSession'),
+                    description: t('chat.sessionClearedSuccessfully'),
+                    variant: 'success',
+                });
             } catch (err) {
                 console.error('Failed to clear session:', err);
+                
+                const errorMessage = err instanceof ApiError 
+                    ? err.message 
+                    : t('chat.failedToClearSession');
+                
+                toast({
+                    title: t('chat.clearSession'),
+                    description: errorMessage,
+                    variant: 'destructive',
+                });
             }
         }
     };

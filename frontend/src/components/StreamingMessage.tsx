@@ -102,12 +102,6 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
             <div className="card-silver p-4 rounded-lg max-w-[80%]">
                 {/* Agent Header */}
                 <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                        <span className="text-xs font-medium">P</span>
-                    </div>
-                    <span className="text-sub text-xs">
-                        {t('chat.silverAgent')}
-                    </span>
                     {isStreaming && onCancel && (
                         <button
                             onClick={onCancel}

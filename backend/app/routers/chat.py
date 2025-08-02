@@ -1,10 +1,13 @@
 # backend/app/routers/chat.py
 
+import asyncio
+import json
 import logging
 import uuid
-from typing import Annotated
+from typing import Annotated, AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..agents.chat_agent import ChatAgent
@@ -83,6 +86,94 @@ async def send_message(
 
     except Exception as e:
         logger.error(f"Chat processing failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        ) from e
+
+
+async def stream_chat_response(
+    message: str,
+    session_id: str,
+    user_id: str | None = None
+) -> AsyncGenerator[str, None]:
+    """
+    Stream chat response token by token with configurable delays.
+    """
+    try:
+        agent = get_chat_agent()
+        
+        # Process the message to get the complete response
+        result = agent.process_message(
+            session_id=session_id,
+            user_message=message,
+            user_id=user_id
+        )
+        
+        # Extract the response text
+        response_text = result.get("message", "")
+        
+        # Send initial metadata
+        yield f"data: {json.dumps({'type': 'metadata', **{k: v for k, v in result.items() if k != 'message'}})}\n\n"
+        
+        # Stream the response text token by token
+        words = response_text.split()
+        for i, word in enumerate(words):
+            # Determine delay based on punctuation
+            delay = 0.1 if word.endswith(('.', '!', '?', ':')) else 0.05
+            
+            # Send the word
+            chunk_data = {
+                'type': 'token',
+                'content': word + (' ' if i < len(words) - 1 else ''),
+                'index': i,
+                'is_final': i == len(words) - 1
+            }
+            yield f"data: {json.dumps(chunk_data)}\n\n"
+            
+            # Add delay for natural feel (20-50 tokens/sec)
+            await asyncio.sleep(delay)
+        
+        # Send completion signal
+        yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+        
+    except Exception as e:
+        logger.error(f"Streaming failed: {e}")
+        error_data = {
+            'type': 'error',
+            'error': str(e)
+        }
+        yield f"data: {json.dumps(error_data)}\n\n"
+
+
+@chat_router.post("/message/stream")
+async def send_message_stream(
+    request: ChatMessage,
+    current_user: Annotated[User | None, Depends(get_current_user_optional)]
+):
+    """
+    Send a message to the portfolio chat agent with streaming response.
+    Returns server-sent events for progressive text rendering.
+    """
+    try:
+        # Generate session ID if not provided
+        session_id = request.session_id or str(uuid.uuid4())
+        user_id = str(current_user.id) if current_user else None
+        
+        # Return streaming response
+        return StreamingResponse(
+            stream_chat_response(request.message, session_id, user_id),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Cache-Control",
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Streaming chat processing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

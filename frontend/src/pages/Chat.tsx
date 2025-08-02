@@ -3,14 +3,17 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
+import { StreamingMessage } from '@/components/StreamingMessage';
 import { chatApi, ApiError } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { useStreamingText } from '@/hooks/useStreamingText';
 
 type Message = {
     id: string;
     text: string;
     isUser: boolean;
     timestamp: Date;
+    isStreaming?: boolean;
 };
 
 const getInitialMessages = (t: (key: string) => string): Message[] => [
@@ -27,13 +30,65 @@ export default function Chat() {
     const { toast } = useToast();
     const [messages, setMessages] = useState<Message[]>(getInitialMessages(t));
     const [inputValue, setInputValue] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+
+    const {
+        streamedText,
+        isStreaming,
+        isThinking,
+        metadata,
+        error: streamError,
+        startStreaming,
+        cancelStream,
+        reset: resetStream,
+    } = useStreamingText({
+        onComplete: (fullText, responseMetadata) => {
+            // Replace the streaming message with the final message
+            setMessages(prev => prev.map(msg => 
+                msg.id === streamingMessageId 
+                    ? { ...msg, text: fullText, isStreaming: false }
+                    : msg
+            ));
+            
+            // Handle additional response metadata
+            if (responseMetadata) {
+                if (responseMetadata.session_id && responseMetadata.session_id !== sessionId) {
+                    setSessionId(responseMetadata.session_id);
+                }
+                
+                if (responseMetadata.show_form && responseMetadata.form_data) {
+                    console.log('Portfolio form data:', responseMetadata.form_data);
+                }
+                
+                if (responseMetadata.portfolio_summary) {
+                    console.log('Portfolio summary:', responseMetadata.portfolio_summary);
+                }
+            }
+            
+            setStreamingMessageId(null);
+        },
+        onError: (errorMessage) => {
+            // Replace streaming message with error message
+            if (streamingMessageId) {
+                setMessages(prev => prev.map(msg => 
+                    msg.id === streamingMessageId 
+                        ? { ...msg, text: `Error: ${errorMessage}`, isStreaming: false }
+                        : msg
+                ));
+            }
+            setStreamingMessageId(null);
+            setError(errorMessage);
+        },
+        onStart: () => {
+            setError(null);
+        }
+    });
 
     const handleSendMessage = async () => {
-        if (!inputValue.trim()) return;
+        if (!inputValue.trim() || isStreaming) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -42,57 +97,79 @@ export default function Chat() {
             timestamp: new Date(),
         };
 
+        // Add user message
         setMessages((prev) => [...prev, userMessage]);
         const messageText = inputValue;
         setInputValue('');
-        setIsLoading(true);
         setError(null);
 
+        // Create streaming AI message placeholder
+        const aiMessageId = (Date.now() + 1).toString();
+        const aiMessage: Message = {
+            id: aiMessageId,
+            text: '',
+            isUser: false,
+            timestamp: new Date(),
+            isStreaming: true,
+        };
+        
+        setMessages((prev) => [...prev, aiMessage]);
+        setStreamingMessageId(aiMessageId);
+
         try {
-            const response = await chatApi.sendMessage({
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+            await startStreaming(`${API_BASE_URL}/chat/message/stream`, {
                 message: messageText,
                 session_id: sessionId || undefined,
             });
-
-            if (response.session_id && response.session_id !== sessionId) {
-                setSessionId(response.session_id);
-            }
-
-            const aiResponse: Message = {
-                id: (Date.now() + 1).toString(),
-                text: response.message,
-                isUser: false,
-                timestamp: new Date(),
-            };
-
-            setMessages((prev) => [...prev, aiResponse]);
-
-            // Handle special UI hints or form display
-            if (response.show_form && response.form_data) {
-                // TODO: Handle portfolio form display
-                console.log('Portfolio form data:', response.form_data);
-            }
-
-            if (response.portfolio_summary) {
-                console.log('Portfolio summary:', response.portfolio_summary);
-            }
         } catch (err) {
-            const errorMessage =
-                err instanceof ApiError
-                    ? `${t('chat.errorOccurred')}: ${err.message}`
-                    : t('chat.failedToSend');
+            console.error('Streaming failed, fallback to regular API:', err);
+            
+            // Fallback to non-streaming API
+            try {
+                const response = await chatApi.sendMessage({
+                    message: messageText,
+                    session_id: sessionId || undefined,
+                });
 
-            setError(errorMessage);
+                if (response.session_id && response.session_id !== sessionId) {
+                    setSessionId(response.session_id);
+                }
 
-            const errorResponse: Message = {
-                id: (Date.now() + 1).toString(),
-                text: errorMessage,
-                isUser: false,
-                timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, errorResponse]);
-        } finally {
-            setIsLoading(false);
+                // Update the streaming message with the complete response
+                setMessages(prev => prev.map(msg => 
+                    msg.id === aiMessageId 
+                        ? { ...msg, text: response.message, isStreaming: false }
+                        : msg
+                ));
+
+                // Handle special UI hints or form display
+                if (response.show_form && response.form_data) {
+                    console.log('Portfolio form data:', response.form_data);
+                }
+
+                if (response.portfolio_summary) {
+                    console.log('Portfolio summary:', response.portfolio_summary);
+                }
+                
+                setStreamingMessageId(null);
+            } catch (fallbackErr) {
+                const errorMessage =
+                    fallbackErr instanceof ApiError
+                        ? `${t('chat.errorOccurred')}: ${fallbackErr.message}`
+                        : t('chat.failedToSend');
+
+                setError(errorMessage);
+                
+                // Update streaming message with error
+                setMessages(prev => prev.map(msg => 
+                    msg.id === aiMessageId 
+                        ? { ...msg, text: errorMessage, isStreaming: false }
+                        : msg
+                ));
+                
+                setStreamingMessageId(null);
+            }
         }
     };
 
@@ -188,75 +265,55 @@ export default function Chat() {
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto space-y-6 mb-6">
-                        {messages.map((message) => (
-                            <div
-                                key={message.id}
-                                className={`flex ${
-                                    message.isUser
-                                        ? 'justify-end'
-                                        : 'justify-start'
-                                } animate-fade-in-up`}
-                            >
-                                <div
-                                    className={`max-w-[80%] ${
-                                        message.isUser
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'card-silver'
-                                    } p-4 rounded-lg`}
-                                >
-                                    {!message.isUser && (
-                                        <div className="flex items-center space-x-2 mb-2">
-                                            <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                                                <span className="text-xs font-medium">
-                                                    P
-                                                </span>
-                                            </div>
-                                            <span className="text-sub text-xs">
-                                                {t('chat.silverAgent')}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <p className="text-nav">{message.text}</p>
-                                    <span className="text-xs opacity-60 mt-2 block">
-                                        {message.timestamp.toLocaleTimeString(
-                                            [],
-                                            {
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                            }
-                                        )}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                        {messages.map((message) => {
+                            // Handle streaming messages
+                            if (!message.isUser && message.id === streamingMessageId) {
+                                return (
+                                    <StreamingMessage
+                                        key={message.id}
+                                        text={streamedText}
+                                        isThinking={isThinking}
+                                        isStreaming={isStreaming}
+                                        timestamp={message.timestamp}
+                                        onCancel={cancelStream}
+                                    />
+                                );
+                            }
 
-                        {isLoading && (
-                            <div className="flex justify-start animate-fade-in-up">
-                                <div className="card-silver p-4 rounded-lg">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                                            <span className="text-xs font-medium">
-                                                P
+                            // Handle user messages
+                            if (message.isUser) {
+                                return (
+                                    <div
+                                        key={message.id}
+                                        className="flex justify-end animate-fade-in-up"
+                                    >
+                                        <div className="max-w-[80%] bg-primary text-primary-foreground p-4 rounded-lg">
+                                            <p className="text-nav">{message.text}</p>
+                                            <span className="text-xs opacity-60 mt-2 block">
+                                                {message.timestamp.toLocaleTimeString(
+                                                    [],
+                                                    {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    }
+                                                )}
                                             </span>
                                         </div>
-                                        <span className="text-sub text-xs">
-                                            {t('chat.silverAgent')}
-                                        </span>
                                     </div>
-                                    <div className="flex space-x-1">
-                                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                                        <div
-                                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                                            style={{ animationDelay: '0.1s' }}
-                                        ></div>
-                                        <div
-                                            className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
-                                            style={{ animationDelay: '0.2s' }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                                );
+                            }
+
+                            // Handle regular AI messages
+                            return (
+                                <StreamingMessage
+                                    key={message.id}
+                                    text={message.text}
+                                    isThinking={false}
+                                    isStreaming={false}
+                                    timestamp={message.timestamp}
+                                />
+                            );
+                        })}
                     </div>
 
                     {/* Quick Actions */}
@@ -284,6 +341,7 @@ export default function Chat() {
                                 onKeyDown={(e) =>
                                     e.key === 'Enter' &&
                                     !e.shiftKey &&
+                                    !isStreaming &&
                                     handleSendMessage()
                                 }
                                 placeholder={t('chat.placeholder')}
@@ -315,10 +373,10 @@ export default function Chat() {
                                 {/* Send Button */}
                                 <button
                                     onClick={handleSendMessage}
-                                    disabled={!inputValue.trim() || isLoading}
+                                    disabled={!inputValue.trim() || isStreaming}
                                     className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {t('chat.send')}
+                                    {isStreaming ? 'Streaming...' : t('chat.send')}
                                 </button>
                             </div>
                         </div>

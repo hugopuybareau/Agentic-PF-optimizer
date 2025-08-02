@@ -92,6 +92,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Chat System Features
 - **Conversational Portfolio Building**: Natural language asset collection with progressive questioning
+- **Streaming Chat Output**: Real-time message streaming for responsive user experience
 - **Intent Classification**: Handles add_asset, remove_asset, modify_asset, complete_portfolio, etc.
 - **Entity Extraction**: Extracts asset details (ticker, amount, type) from natural language
 - **Context Awareness**: Resolves references like "the same amount", "that stock"
@@ -100,6 +101,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Asset Suggestions**: Provides common stocks, cryptos, and portfolio templates
 
 ## Development Patterns
+
+### Feature Development Guidelines
+- **Translation Keys**: When adding new features with user-facing text, ALWAYS update translation keys in both English and French files (`frontend/public/locales/`)
+- **Internationalization**: Ensure all new UI text uses i18next translation keys instead of hardcoded strings
+- **Feature Integration**: For significant new features, update this CLAUDE.md file to document the integration
 
 ### Agent Development
 - Both agents use LangGraph StateGraph for workflow orchestration

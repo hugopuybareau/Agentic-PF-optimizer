@@ -91,6 +91,28 @@ export const chatApi = {
         });
     },
 
+    sendMessageStream: async (message: ChatMessage): Promise<Response> => {
+        const url = `${API_BASE_URL}/chat/message/stream`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(message),
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new ApiError(
+                response.status,
+                data.detail || `HTTP ${response.status}`
+            );
+        }
+
+        return response;
+    },
+
     submitPortfolio: async (submission: PortfolioSubmission): Promise<any> => {
         return fetchApi('/api/chat/submit-portfolio', {
             method: 'POST',

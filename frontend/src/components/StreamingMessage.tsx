@@ -99,30 +99,76 @@ const ProgressiveMarkdown: React.FC<{ text: string; isStreaming?: boolean }> = (
     }
     
     return (
-        <div className="prose prose-slate max-w-none dark:prose-invert">
+        <div className="prose prose-sm prose-slate max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-foreground prose-p:text-foreground prose-p:text-sm prose-p:font-medium prose-strong:text-foreground prose-em:text-foreground prose-blockquote:border-l-border prose-blockquote:text-muted-foreground prose-code:text-foreground prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-li:text-sm prose-li:font-medium">
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
+                    // Enhanced list item styling
                     li: ({ children, ...props }) => (
-                        <li className="ml-4" {...props}>
+                        <li className="my-1" {...props}>
                             {children}
                         </li>
                     ),
+                    // Enhanced code styling
                     code: ({ children, ...props }) => {
                         const isInline = !props.className?.includes('language-');
                         if (isInline) {
                             return (
-                                <code className="bg-muted px-1 rounded" {...props}>
+                                <code className="bg-muted/50 text-foreground px-1.5 py-0.5 rounded-md text-sm font-mono border" {...props}>
                                     {children}
                                 </code>
                             );
                         }
                         return (
-                            <pre className="bg-muted rounded px-2 py-1 font-mono text-sm">
-                                <code {...props}>{children}</code>
+                            <pre className="bg-muted/30 border border-border rounded-lg p-4 overflow-x-auto">
+                                <code className="text-foreground font-mono text-sm" {...props}>{children}</code>
                             </pre>
                         );
                     },
+                    // Enhanced blockquote styling
+                    blockquote: ({ children, ...props }) => (
+                        <blockquote className="border-l-4 border-border bg-muted/20 pl-4 py-2 my-4 italic text-muted-foreground" {...props}>
+                            {children}
+                        </blockquote>
+                    ),
+                    // Enhanced heading styling
+                    h1: ({ children, ...props }) => (
+                        <h1 className="text-2xl font-bold text-foreground mt-6 mb-4 pb-2 border-b border-border" {...props}>
+                            {children}
+                        </h1>
+                    ),
+                    h2: ({ children, ...props }) => (
+                        <h2 className="text-xl font-semibold text-foreground mt-5 mb-3" {...props}>
+                            {children}
+                        </h2>
+                    ),
+                    h3: ({ children, ...props }) => (
+                        <h3 className="text-lg font-semibold text-foreground mt-4 mb-2" {...props}>
+                            {children}
+                        </h3>
+                    ),
+                    // Enhanced table styling
+                    table: ({ children, ...props }) => (
+                        <div className="overflow-x-auto my-4">
+                            <table className="min-w-full border border-border rounded-lg" {...props}>
+                                {children}
+                            </table>
+                        </div>
+                    ),
+                    th: ({ children, ...props }) => (
+                        <th className="border border-border bg-muted/50 px-3 py-2 text-left font-semibold text-foreground" {...props}>
+                            {children}
+                        </th>
+                    ),
+                    td: ({ children, ...props }) => (
+                        <td className="border border-border px-3 py-2 text-foreground" {...props}>
+                            {children}
+                        </td>
+                    ),
+                    // Enhanced horizontal rule
+                    hr: ({ ...props }) => (
+                        <hr className="my-6 border-border" {...props} />
+                    ),
                 }}
             >
                 {displayText}

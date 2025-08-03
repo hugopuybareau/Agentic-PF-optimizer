@@ -46,35 +46,52 @@ export default function Chat() {
         cancelStream,
     } = useStreamingText({
         onComplete: (fullText, responseMetadata, aiMessageId) => {
-            setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                    ? { ...msg, text: fullText, isStreaming: false }
-                    : msg
-            ));
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === aiMessageId
+                        ? { ...msg, text: fullText, isStreaming: false }
+                        : msg
+                )
+            );
 
             if (responseMetadata) {
-                if (responseMetadata.session_id && responseMetadata.session_id !== sessionId) {
+                if (
+                    responseMetadata.session_id &&
+                    responseMetadata.session_id !== sessionId
+                ) {
                     setSessionId(responseMetadata.session_id);
                 }
                 if (responseMetadata.show_form && responseMetadata.form_data) {
-                    console.log('Portfolio form data:', responseMetadata.form_data);
+                    console.log(
+                        'Portfolio form data:',
+                        responseMetadata.form_data
+                    );
                 }
                 if (responseMetadata.portfolio_summary) {
-                    console.log('Portfolio summary:', responseMetadata.portfolio_summary);
+                    console.log(
+                        'Portfolio summary:',
+                        responseMetadata.portfolio_summary
+                    );
                 }
             }
         },
         onError: (errorMessage, aiMessageId) => {
-            setMessages(prev => prev.map(msg =>
-                msg.id === aiMessageId
-                    ? { ...msg, text: `Error: ${errorMessage}`, isStreaming: false }
-                    : msg
-            ));
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === aiMessageId
+                        ? {
+                              ...msg,
+                              text: `Error: ${errorMessage}`,
+                              isStreaming: false,
+                          }
+                        : msg
+                )
+            );
             setError(errorMessage);
         },
         onStart: () => {
             setError(null);
-        }
+        },
     });
 
     // Session restoration on component mount and tab visibility changes
@@ -82,24 +99,34 @@ export default function Chat() {
         const restoreSession = async () => {
             try {
                 // Try to get saved session ID
-                const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
-                
+                const savedSessionId =
+                    localStorage.getItem(SESSION_STORAGE_KEY);
+
                 if (savedSessionId && savedSessionId !== sessionId) {
                     try {
-                        const sessionData = await chatApi.getSession(savedSessionId);
-                        
+                        const sessionData = await chatApi.getSession(
+                            savedSessionId
+                        );
+
                         // If session exists, restore it
                         if (sessionData && sessionData.messages) {
                             setSessionId(savedSessionId);
-                            
+
                             // Restore messages from backend
-                            const restoredMessages = sessionData.messages.map((msg: { id: string; text: string; isUser: boolean; timestamp: string }) => ({
-                                id: msg.id,
-                                text: msg.text,
-                                isUser: msg.isUser,
-                                timestamp: new Date(msg.timestamp)
-                            }));
-                            
+                            const restoredMessages = sessionData.messages.map(
+                                (msg: {
+                                    id: string;
+                                    text: string;
+                                    isUser: boolean;
+                                    timestamp: string;
+                                }) => ({
+                                    id: msg.id,
+                                    text: msg.text,
+                                    isUser: msg.isUser,
+                                    timestamp: new Date(msg.timestamp),
+                                })
+                            );
+
                             if (restoredMessages.length > 0) {
                                 setMessages(restoredMessages);
                             } else {
@@ -119,22 +146,25 @@ export default function Chat() {
                 setIsLoadingSession(false);
             }
         };
-        
+
         // Initial restoration on mount
         restoreSession();
-        
+
         // Listen for tab visibility changes
         const handleVisibilityChange = () => {
             if (!document.hidden) {
                 restoreSession();
             }
         };
-        
+
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        
+
         // Cleanup event listener
         return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange
+            );
         };
     }, [sessionId, t]);
 
@@ -173,11 +203,16 @@ export default function Chat() {
         setMessages((prev) => [...prev, aiMessage]);
 
         try {
-            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-            await startStreaming(`${API_BASE_URL}/chat/message/stream`, {
-                message: messageText,
-                session_id: sessionId || undefined,
-            }, aiMessageId);
+            const API_BASE_URL =
+                import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+            await startStreaming(
+                `${API_BASE_URL}/chat/message/stream`,
+                {
+                    message: messageText,
+                    session_id: sessionId || undefined,
+                },
+                aiMessageId
+            );
         } catch (err) {
             console.error('Streaming failed, fallback to regular API:', err);
 
@@ -191,19 +226,27 @@ export default function Chat() {
                     setSessionId(response.session_id);
                 }
 
-                setMessages(prev => prev.map(msg =>
-                    msg.id === aiMessageId
-                        ? { ...msg, text: response.message, isStreaming: false }
-                        : msg
-                ));
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === aiMessageId
+                            ? {
+                                  ...msg,
+                                  text: response.message,
+                                  isStreaming: false,
+                              }
+                            : msg
+                    )
+                );
 
                 if (response.show_form && response.form_data) {
                     console.log('Portfolio form data:', response.form_data);
                 }
                 if (response.portfolio_summary) {
-                    console.log('Portfolio summary:', response.portfolio_summary);
+                    console.log(
+                        'Portfolio summary:',
+                        response.portfolio_summary
+                    );
                 }
-
             } catch (fallbackErr) {
                 const errorMessage =
                     fallbackErr instanceof ApiError
@@ -212,11 +255,13 @@ export default function Chat() {
 
                 setError(errorMessage);
 
-                setMessages(prev => prev.map(msg =>
-                    msg.id === aiMessageId
-                        ? { ...msg, text: errorMessage, isStreaming: false }
-                        : msg
-                ));
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === aiMessageId
+                            ? { ...msg, text: errorMessage, isStreaming: false }
+                            : msg
+                    )
+                );
             }
         }
     };
@@ -228,7 +273,7 @@ export default function Chat() {
                 setSessionId(null);
                 setMessages(getInitialMessages(t));
                 setError(null);
-                
+
                 // Clear localStorage
                 localStorage.removeItem(SESSION_STORAGE_KEY);
                 localStorage.removeItem(MESSAGES_STORAGE_KEY);
@@ -241,9 +286,10 @@ export default function Chat() {
             } catch (err) {
                 console.error('Failed to clear session:', err);
 
-                const errorMessage = err instanceof ApiError
-                    ? err.message
-                    : t('chat.failedToClearSession');
+                const errorMessage =
+                    err instanceof ApiError
+                        ? err.message
+                        : t('chat.failedToClearSession');
 
                 toast({
                     title: t('chat.clearSession'),
@@ -320,7 +366,9 @@ export default function Chat() {
                         {isLoadingSession && (
                             <div className="flex justify-center items-center h-32">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                <span className="ml-2 text-muted-foreground">{t('chat.loadingSession')}</span>
+                                <span className="ml-2 text-muted-foreground">
+                                    {t('chat.loadingSession')}
+                                </span>
                             </div>
                         )}
                         {messages.map((message) => {
@@ -346,7 +394,9 @@ export default function Chat() {
                                         className="flex justify-end animate-fade-in-up"
                                     >
                                         <div className="max-w-[80%] bg-primary text-primary-foreground p-4 rounded-lg">
-                                            <p className="text-nav">{message.text}</p>
+                                            <p className="text-nav">
+                                                {message.text}
+                                            </p>
                                             <span className="text-xs opacity-60 mt-2 block">
                                                 {message.timestamp.toLocaleTimeString(
                                                     [],
@@ -390,61 +440,69 @@ export default function Chat() {
                     </div>
 
                     {/* Input Area */}
-                    <div className="card-silver p-4 rounded-lg">
-                        <div className="flex space-x-4">
-                            <input
-                                type="text"
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                onKeyDown={(e) =>
-                                    e.key === 'Enter' &&
-                                    !e.shiftKey &&
-                                    !isStreaming &&
-                                    handleSendMessage()
-                                }
-                                placeholder={t('chat.placeholder')}
-                                className="flex-1 bg-transparent border-none outline-none text-nav placeholder:text-muted-foreground"
-                            />
+                    <div className="card-silver rounded-lg">
+                        <div className="p-4">
+                            <div className="flex space-x-4">
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={(e) =>
+                                        setInputValue(e.target.value)
+                                    }
+                                    onKeyDown={(e) =>
+                                        e.key === 'Enter' &&
+                                        !e.shiftKey &&
+                                        !isStreaming &&
+                                        handleSendMessage()
+                                    }
+                                    placeholder={t('chat.placeholder')}
+                                    className="flex-1 bg-transparent border-none outline-none text-nav placeholder:text-muted-foreground relative z-10"
+                                />
 
-                            <div className="flex items-center space-x-2">
-                                {/* File Upload */}
-                                <button
-                                    onClick={handleFileUpload}
-                                    className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                    title={t('chat.uploadFile')}
-                                >
-                                    <svg
-                                        className="w-4 h-4"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
+                                <div className="flex items-center space-x-2 relative z-10">
+                                    {/* File Upload */}
+                                    <button
+                                        onClick={handleFileUpload}
+                                        className="p-2 hover:bg-accent rounded-lg transition-colors"
+                                        title={t('chat.uploadFile')}
                                     >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                                        />
-                                    </svg>
-                                </button>
+                                        <svg
+                                            className="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                            />
+                                        </svg>
+                                    </button>
 
-                                {/* Send Button */}
-                                <button
-                                    onClick={handleSendMessage}
-                                    disabled={!inputValue.trim() || isStreaming}
-                                    className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isStreaming ? 'Streaming...' : t('chat.send')}
-                                </button>
+                                    {/* Send Button */}
+                                    <button
+                                        onClick={handleSendMessage}
+                                        disabled={
+                                            !inputValue.trim() || isStreaming
+                                        }
+                                        className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isStreaming
+                                            ? 'Streaming...'
+                                            : t('chat.send')}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv,.pdf"
-                            className="hidden"
-                        />
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".csv,.pdf"
+                                className="hidden"
+                            />
+                        </div>
                     </div>
                 </div>
             </main>

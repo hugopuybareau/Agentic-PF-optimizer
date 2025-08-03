@@ -1,6 +1,8 @@
 // frontend/src/components/StreamingMessage.tsx
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 
 interface StreamingMessageProps {
@@ -11,61 +13,37 @@ interface StreamingMessageProps {
     onCancel?: () => void;
 }
 
-const ProgressiveMarkdown: React.FC<{ text: string }> = ({ text }) => {
-    // Simple progressive markdown renderer
-    // This handles basic formatting as text streams in
-    const renderText = (content: string) => {
-        // Split by lines to handle progressive list building
-        const lines = content.split('\n');
-        
-        return lines.map((line, index) => {
-            // Handle bullet points
-            if (line.trim().startsWith('- ') || line.trim().startsWith('• ')) {
-                return (
-                    <li key={index} className="ml-4 list-disc">
-                        {line.replace(/^[-•]\s*/, '')}
+const ProgressiveMarkdown: React.FC<{ text: string }> = ({ text }) => (
+    <div className="prose prose-slate max-w-none dark:prose-invert">
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+                li: ({ children, ...props }) => (
+                    <li className="ml-4" {...props}>
+                        {children}
                     </li>
-                );
-            }
-            
-            // Handle numbered lists
-            if (/^\d+\.\s/.test(line.trim())) {
-                return (
-                    <li key={index} className="ml-4 list-decimal">
-                        {line.replace(/^\d+\.\s*/, '')}
-                    </li>
-                );
-            }
-            
-            // Handle code blocks (basic)
-            if (line.trim().startsWith('```')) {
-                return (
-                    <div key={index} className="bg-muted rounded px-2 py-1 font-mono text-sm">
-                        {line.replace(/```\w*/, '')}
-                    </div>
-                );
-            }
-            
-            // Handle inline code
-            const codeFormatted = line.replace(/`([^`]+)`/g, '<code class="bg-muted px-1 rounded">$1</code>');
-            
-            // Handle bold
-            const boldFormatted = codeFormatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            
-            // Handle italic
-            const italicFormatted = boldFormatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-            
-            return (
-                <span
-                    key={index}
-                    dangerouslySetInnerHTML={{ __html: italicFormatted }}
-                />
-            );
-        });
-    };
-
-    return <div className="space-y-1">{renderText(text)}</div>;
-};
+                ),
+                code: ({ children, ...props }) => {
+                    const isInline = !props.className?.includes('language-');
+                    if (isInline) {
+                        return (
+                            <code className="bg-muted px-1 rounded" {...props}>
+                                {children}
+                            </code>
+                        );
+                    }
+                    return (
+                        <pre className="bg-muted rounded px-2 py-1 font-mono text-sm">
+                            <code {...props}>{children}</code>
+                        </pre>
+                    );
+                },
+            }}
+        >
+            {text}
+        </ReactMarkdown>
+    </div>
+);
 
 const ThinkingAnimation: React.FC = () => {
     return (

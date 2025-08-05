@@ -60,16 +60,16 @@ export default function LoginPage() {
                 </div>
             </div>
 
-            {/* Right Side - White with Form */}
-            <div className="flex-1 bg-white flex items-center justify-center p-12">
+            {/* Right Side - Background with Form */}
+            <div className="flex-1 bg-background flex items-center justify-center p-12">
                 <div className="w-full max-w-md">
                     {/* Mode Toggle */}
-                    <div className="flex mb-8 bg-gray-100 rounded-lg p-1">
+                    <div className="flex mb-8 bg-muted rounded-lg p-1">
                         <button
                             className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
                                 mode === 'login'
-                                    ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-background text-foreground shadow-sm border border-border'
+                                    : 'text-muted-foreground hover:text-foreground'
                             }`}
                             onClick={mode === 'login' ? undefined : switchMode}
                             disabled={mode === 'login'}
@@ -80,8 +80,8 @@ export default function LoginPage() {
                         <button
                             className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
                                 mode === 'register'
-                                    ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-background text-foreground shadow-sm border border-border'
+                                    : 'text-muted-foreground hover:text-foreground'
                             }`}
                             onClick={mode === 'register' ? undefined : switchMode}
                             disabled={mode === 'register'}
@@ -93,10 +93,10 @@ export default function LoginPage() {
 
                     {/* Header */}
                     <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                        <h2 className="text-3xl font-bold text-foreground mb-2">
                             {mode === 'login' ? t('login.welcomeBack') : t('login.createAccount')}
                         </h2>
-                        <p className="text-gray-600">
+                        <p className="text-muted-foreground">
                             {mode === 'login' 
                                 ? t('login.signInToContinue')
                                 : t('login.joinUsToday')
@@ -120,7 +120,7 @@ export default function LoginPage() {
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         {/* Email field */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="email">
+                            <label className="block text-sm font-medium text-foreground mb-2" htmlFor="email">
                                 {t('login.email')}
                             </label>
                             <input
@@ -129,7 +129,7 @@ export default function LoginPage() {
                                 autoComplete="email"
                                 value={form.email}
                                 onChange={handleInputChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 text-gray-900"
+                                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-foreground bg-background"
                                 placeholder={t('login.emailPlaceholder')}
                                 required
                             />
@@ -139,7 +139,7 @@ export default function LoginPage() {
                         {mode === 'register' && (
                             <>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="username">
+                                    <label className="block text-sm font-medium text-foreground mb-2" htmlFor="username">
                                         {t('login.username')}
                                     </label>
                                     <input
@@ -147,22 +147,22 @@ export default function LoginPage() {
                                         type="text"
                                         value={form.username || ''}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 text-gray-900"
+                                        className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-foreground bg-background"
                                         placeholder={t('login.usernamePlaceholder')}
                                         required
                                     />
                                 </div>
                                 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="full_name">
-                                        {t('login.fullName')} <span className="text-gray-500 text-xs">({t('login.optional')})</span>
+                                    <label className="block text-sm font-medium text-foreground mb-2" htmlFor="full_name">
+                                        {t('login.fullName')} <span className="text-muted-foreground text-xs">({t('login.optional')})</span>
                                     </label>
                                     <input
                                         name="full_name"
                                         type="text"
                                         value={form.full_name || ''}
                                         onChange={handleInputChange}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 text-gray-900"
+                                        className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-foreground bg-background"
                                         placeholder={t('login.fullNamePlaceholder')}
                                     />
                                 </div>
@@ -171,7 +171,7 @@ export default function LoginPage() {
 
                         {/* Password field */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="password">
+                            <label className="block text-sm font-medium text-foreground mb-2" htmlFor="password">
                                 {t('login.password')}
                             </label>
                             <input
@@ -180,7 +180,7 @@ export default function LoginPage() {
                                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                                 value={form.password}
                                 onChange={handleInputChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all duration-200 text-gray-900"
+                                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-foreground bg-background"
                                 placeholder={t('login.passwordPlaceholder')}
                                 required
                             />
@@ -188,7 +188,7 @@ export default function LoginPage() {
 
                         {/* Submit button */}
                         <button
-                            className="w-full bg-black hover:bg-gray-800 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:transform-none disabled:cursor-not-allowed"
                             type="submit"
                             disabled={loading}
                         >
@@ -207,10 +207,10 @@ export default function LoginPage() {
 
                     {/* Footer */}
                     <div className="mt-8 text-center">
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                             {mode === 'login' ? t('login.noAccount?') : t('login.account?')}{' '}
                             <button
-                                className="text-black hover:text-gray-800 font-medium underline-offset-4 hover:underline transition-all duration-200"
+                                className="text-primary hover:text-primary/80 font-medium underline-offset-4 hover:underline transition-all duration-200"
                                 type="button"
                                 onClick={switchMode}
                             >

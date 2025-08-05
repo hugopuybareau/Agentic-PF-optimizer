@@ -29,7 +29,16 @@ export default function LoginPage() {
     }, [success, mode, navigate, login]);
 
     return (
-        <div className="min-h-screen flex">
+        <div className="min-h-screen flex relative">
+            {/* Logo in absolute center */}
+            {/* <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                <img 
+                    src="/images/favicon_v2.png" 
+                    alt="Silver Agents Logo" 
+                    className="h-32 w-auto opacity-90"
+                />
+            </div> */}
+            
             {/* Left Side - Black with Text */}
             <div className="flex-1 bg-black text-white flex items-center justify-center p-12">
                 <div className="max-w-md">

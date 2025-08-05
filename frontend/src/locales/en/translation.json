@@ -94,9 +94,11 @@
     "landing": {
         "welcome": "Welcome to Agentic PF Optimizer",
         "agentsSoGood": "agents so good",
-        "theyMakeYouWinMoney": "they make you win money",
         "aiPoweredDescription": "AI-powered portfolio analysis and market insights for modern investors",
-        "getStarted": "Get Started"
+        "getStarted": "Get Started",
+        "youFollowTheirLead": "you follow their lead",
+        "theyMakeYouWinMoney": "they make you win money",
+        "theyKnowBeforeAnyoneElse": "they know before anyone else"
     },
     "login": {
         "account?": "Already have an account?",

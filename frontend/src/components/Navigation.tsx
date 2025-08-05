@@ -48,10 +48,13 @@ export function Navigation() {
                     {/* Logo */}
                     <Link
                         to={isAuthenticated ? "/landing" : "/"}
-                        className="text-nav font-semibold tracking-tight"
+                        className="flex items-center gap-3"
                     >
-                        silver
-                        <span className="text-muted-foreground"> agents</span>
+                        <img src="/favicon.ico" alt="Silver Agents logo" className="w-6 h-6" />
+                        <div className="text-nav font-semibold tracking-tight">
+                            silver
+                            <span className="text-muted-foreground"> agents</span>
+                        </div>
                     </Link>
 
                     {/* Center Navigation */}

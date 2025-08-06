@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-from langchain.schema import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain.schema import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
 from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
@@ -15,6 +15,7 @@ from langfuse.decorators import langfuse_context, observe
 from langgraph.graph import END, StateGraph
 from pydantic import SecretStr
 
+from ..config.prompts import prompt_manager
 from ..models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from ..models.portfolio import Portfolio
 from .session_storage import get_session_storage
@@ -161,30 +162,20 @@ class ChatAgent:
     # tools
     @observe(name="classify_intent_tool")
     def _classify_intent_wrapped(self, session: ChatSession, user_message: str) -> str:
-        messages: list[BaseMessage] = [
-            SystemMessage(content="""You are a portfolio assistant helping users build their investment portfolio.
-            Classify the user's intent into one of these categories:
-
-            1. "add_asset" - User wants to add an asset (stock, crypto, real estate, etc.)
-            2. "remove_asset" - User wants to remove an asset
-            3. "modify_asset" - User wants to change quantity/details of existing asset
-            4. "list_assets" - User wants to see current portfolio
-            5. "complete_portfolio" - User indicates they're done adding assets
-            6. "ask_question" - General question about portfolio or investing
-            7. "greeting" - Initial greeting or general conversation
-            8. "unclear" - Intent is not clear
-
-            Consider the conversation history to understand context.
-            Return ONLY the intent category, nothing else.""")
-        ]
-
+        # Build conversation history for context
+        conversation_history: list[BaseMessage] = []
         for msg in session.messages[-10:]:
             if msg.role == "user":
-                messages.append(HumanMessage(content=msg.content))
+                conversation_history.append(HumanMessage(content=msg.content))
             else:
-                messages.append(AIMessage(content=msg.content))
+                conversation_history.append(AIMessage(content=msg.content))
 
-        messages.append(HumanMessage(content=user_message))
+        # Use prompt manager to build messages with Langfuse prompt
+        messages = prompt_manager.build_messages(
+            system_prompt_name="chat-intent-classifier",
+            user_content=user_message,
+            conversation_history=conversation_history
+        )
 
         try:
             response = self.llm.invoke(messages)
@@ -220,34 +211,20 @@ class ChatAgent:
         if intent not in ["add_asset", "modify_asset", "remove_asset"]:
             return {}
 
-        messages: list[BaseMessage] = [
-            SystemMessage(content="""Extract investment details from the user message.
-            Look for:
-            - Asset type (stock, crypto, real_estate, mortgage, cash)
-            - Asset identifier (ticker, symbol, address, etc.)
-            - Quantity/amount/shares
-            - Additional details (currency, lender, etc.)
-
-            Consider the conversation context to understand references like "it", "that", "the same", etc.
-
-            Return ONLY a valid JSON object with extracted information.
-            Example outputs:
-            {"type": "stock", "ticker": "AAPL", "shares": 100}
-            {"type": "crypto", "symbol": "BTC", "amount": 0.5}
-            {"type": "real_estate", "address": "123 Main St, NYC", "value": 500000}
-            {"type": "cash", "currency": "USD", "amount": 10000}
-
-            If information is missing, include what you found and mark missing fields as null.
-            DO NOT include any text outside the JSON object.""")
-        ]
-
+        # Build conversation history for context
+        conversation_history: list[BaseMessage] = []
         for msg in session.messages[-6:]:
             if msg.role == "user":
-                messages.append(HumanMessage(content=msg.content))
+                conversation_history.append(HumanMessage(content=msg.content))
             else:
-                messages.append(AIMessage(content=msg.content))
+                conversation_history.append(AIMessage(content=msg.content))
 
-        messages.append(HumanMessage(content=user_message))
+        # Use prompt manager to build messages with Langfuse prompt
+        messages = prompt_manager.build_messages(
+            system_prompt_name="entity-extractor",
+            user_content=user_message,
+            conversation_history=conversation_history
+        )
 
         try:
             response = self.llm.invoke(messages)
@@ -339,37 +316,26 @@ class ChatAgent:
         portfolio_state: PortfolioBuildingState
     ) -> dict[str, Any]:
 
-        messages: list[BaseMessage] = [
-            SystemMessage(content=
-        f"""
-            You are a friendly portfolio assistant helping users build their investment portfolio.
-
-            Current portfolio state:
-            {self._get_portfolio_summary(portfolio_state)}
-
-            User intent: {intent}
-            Extracted entities: {json.dumps(entities)}
-
-            Guidelines:
-            - Be conversational and helpful, your goal to make the user create a complete portfolio in our database.
-            - Reference previous conversation when relevant
-            - If information is missing, ask for specific details
-            - Confirm when assets are added/removed
-            - Suggest common asset types if portfolio seems incomplete
-            - Keep responses concise but informative
-            - Remember what the user has already told you
-
-            Generate an appropriate response based on the conversation history.
-        """)
-        ]
-
+        # Build conversation history for context
+        conversation_history: list[BaseMessage] = []
         for msg in session.messages[-8:]:
             if msg.role == "user":
-                messages.append(HumanMessage(content=msg.content))
+                conversation_history.append(HumanMessage(content=msg.content))
             else:
-                messages.append(AIMessage(content=msg.content))
+                conversation_history.append(AIMessage(content=msg.content))
 
-        messages.append(HumanMessage(content=user_message))
+        prompt_variables = {
+            "portfolio_summary": self._get_portfolio_summary(portfolio_state),
+            "intent": intent,
+            "entities": json.dumps(entities)
+        }
+
+        messages = prompt_manager.build_messages(
+            system_prompt_name="chat-response-generator",
+            user_content=user_message,
+            system_variables=prompt_variables,
+            conversation_history=conversation_history
+        )
 
         try:
             response = self.llm.invoke(messages)
@@ -411,7 +377,6 @@ class ChatAgent:
     @observe(name="prepare_form_tool")
     def _prepare_form_wrapped(self, session: ChatSession, portfolio_state: PortfolioBuildingState) -> dict[str, Any]:
 
-        # Convert assets to form-friendly format
         form_assets = []
         for asset in portfolio_state.assets:
             asset_dict = {}

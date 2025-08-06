@@ -9,6 +9,7 @@ from langchain.schema import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 from pydantic import SecretStr
 
+from ..config.prompts import prompt_manager
 from ..models.assets import Asset
 from .state.analysis import AnalysisResult
 from .state.news import NewsItem
@@ -140,24 +141,14 @@ class ClassificationTool:
         try:
             asset_info = f"{asset.type}: {getattr(asset, 'ticker', '') or getattr(asset, 'symbol', '') or str(asset)}"
 
-            messages: list[BaseMessage] = [
-                SystemMessage(content="""You are a financial news classifier. Analyze the given news article and classify it with the following criteria:
+            # Prepare user content for news classification
+            user_content = f"Asset: {asset_info}\nNews Title: {news_item.title}\nNews Content: {news_item.snippet}"
 
-                1. SENTIMENT: positive, negative, or neutral
-                2. IMPACT: high, medium, or low (how much this could affect the asset price)
-                3. RELEVANCE: Score from 0-1 (how relevant this is to the specific asset)
-                4. RISK_TYPE: market_risk, regulatory_risk, operational_risk, credit_risk, or other
-
-                Reply **only** with a valid JSON object as described below, and nothing else:
-                {
-                    "sentiment": "positive/negative/neutral",
-                    "impact": "high/medium/low",
-                    "relevance_score": 0.0-1.0,
-                    "risk_type": "market_risk/regulatory_risk/operational_risk/credit_risk/other",
-                    "reasoning": "Brief explanation of your classification"
-                }"""),
-                HumanMessage(content=f"Asset: {asset_info}\nNews Title: {news_item.title}\nNews Content: {news_item.snippet}")
-            ]
+            # Use prompt manager to build messages with Langfuse prompt
+            messages = prompt_manager.build_messages(
+                system_prompt_name="tools-news-classifier",
+                user_content=user_content
+            )
 
             response = self.llm.invoke(messages)
 
@@ -215,18 +206,8 @@ class AnalysisTool:
             news_summary = self._prepare_news_summary(classified_news)
             asset_info = self._get_asset_info(asset)
 
-            messages: list[BaseMessage] = [
-                SystemMessage(content="""You are an expert financial advisor analyzing portfolio assets based on recent news.
-
-                Provide a comprehensive analysis including:
-                1. SENTIMENT_SUMMARY: Overall sentiment from the news (2-3 sentences)
-                2. RISK_ASSESSMENT: Current risk level and factors (2-3 sentences)
-                3. RECOMMENDATIONS: 3-5 specific actionable recommendations
-                4. CONFIDENCE_SCORE: Your confidence in this analysis (0-1)
-
-                Be specific, actionable, and focus on risk management and optimization opportunities.
-                Consider both short-term news impacts and long-term portfolio health."""),
-                HumanMessage(content=f"""Asset: {asset_info}
+            # Prepare user content for asset analysis
+            user_content = f"""Asset: {asset_info}
                 Recent News Analysis:
                 {news_summary}
 
@@ -236,8 +217,13 @@ class AnalysisTool:
                     "risk_assessment": "...",
                     "recommendations": ["rec1", "rec2", "rec3"],
                     "confidence_score": 0.0-1.0
-                }}""")
-            ]
+                }}"""
+
+            # Use prompt manager to build messages with Langfuse prompt
+            messages = prompt_manager.build_messages(
+                system_prompt_name="tools-asset-analyzer",
+                user_content=user_content
+            )
 
             response = self.llm.invoke(messages)
 

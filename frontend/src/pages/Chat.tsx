@@ -1,42 +1,47 @@
 // frontend/src/pages/Chat.tsx
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
-import { StreamingMessage } from '@/components/StreamingMessage';
+import { 
+    ChatHeader, 
+    ChatMessages, 
+    ScrollToBottomButton, 
+    QuickActions, 
+    ChatInput 
+} from '@/components/chat';
 import { chatApi, ApiError } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useStreamingText } from '@/hooks/useStreamingText';
-
-type Message = {
-    id: string;
-    text: string;
-    isUser: boolean;
-    timestamp: Date;
-    isStreaming?: boolean;
-};
-
-const getInitialMessages = (t: (key: string) => string): Message[] => [
-    {
-        id: '1',
-        text: t('chat.initialMessage'),
-        isUser: false,
-        timestamp: new Date(),
-    },
-];
-
-const SESSION_STORAGE_KEY = 'chat_session_id';
-const MESSAGES_STORAGE_KEY = 'chat_messages';
+import { useAutoScroll } from '@/hooks/useAutoScroll';
+import { useChatSession } from '@/hooks/useChatSession';
 
 export default function Chat() {
     const { t } = useTranslation();
     const { toast } = useToast();
-    const [messages, setMessages] = useState<Message[]>(getInitialMessages(t));
     const [inputValue, setInputValue] = useState('');
-    const [sessionId, setSessionId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isLoadingSession, setIsLoadingSession] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Custom hooks
+    const { 
+        messages, 
+        setMessages, 
+        sessionId, 
+        setSessionId, 
+        isLoadingSession, 
+        clearSession: clearSessionData 
+    } = useChatSession(t);
+
+    const {
+        messagesEndRef,
+        messagesContainerRef,
+        showScrollButton,
+        userScrolled,
+        scrollToBottom,
+        autoScrollToBottom,
+        resetScrollState,
+    } = useAutoScroll();
 
     const {
         streamedText,
@@ -94,91 +99,13 @@ export default function Chat() {
         },
     });
 
-    // Session restoration on component mount and tab visibility changes
-    useEffect(() => {
-        const restoreSession = async () => {
-            try {
-                // Try to get saved session ID
-                const savedSessionId =
-                    localStorage.getItem(SESSION_STORAGE_KEY);
-
-                if (savedSessionId && savedSessionId !== sessionId) {
-                    try {
-                        const sessionData = await chatApi.getSession(
-                            savedSessionId
-                        );
-
-                        // If session exists, restore it
-                        if (sessionData && sessionData.messages) {
-                            setSessionId(savedSessionId);
-
-                            // Restore messages from backend
-                            const restoredMessages = sessionData.messages.map(
-                                (msg: {
-                                    id: string;
-                                    text: string;
-                                    isUser: boolean;
-                                    timestamp: string;
-                                }) => ({
-                                    id: msg.id,
-                                    text: msg.text,
-                                    isUser: msg.isUser,
-                                    timestamp: new Date(msg.timestamp),
-                                })
-                            );
-
-                            if (restoredMessages.length > 0) {
-                                setMessages(restoredMessages);
-                            } else {
-                                setMessages(getInitialMessages(t));
-                            }
-                        } else {
-                            localStorage.removeItem(SESSION_STORAGE_KEY);
-                        }
-                    } catch (err) {
-                        // Clear localStorage if session not found
-                        localStorage.removeItem(SESSION_STORAGE_KEY);
-                    }
-                }
-            } catch (error) {
-                console.error('Error in session restoration:', error);
-            } finally {
-                setIsLoadingSession(false);
-            }
-        };
-
-        // Initial restoration on mount
-        restoreSession();
-
-        // Listen for tab visibility changes
-        const handleVisibilityChange = () => {
-            if (!document.hidden) {
-                restoreSession();
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Cleanup event listener
-        return () => {
-            document.removeEventListener(
-                'visibilitychange',
-                handleVisibilityChange
-            );
-        };
-    }, [sessionId, t]);
-
-    // Save session ID to localStorage (messages are stored in backend)
-    useEffect(() => {
-        if (sessionId) {
-            localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-        }
-    }, [sessionId]);
+    // Auto-scroll when new messages are added
+    autoScrollToBottom(messages, streamedText, isLoadingSession);
 
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isStreaming) return;
 
-        const userMessage: Message = {
+        const userMessage = {
             id: crypto.randomUUID(),
             text: inputValue,
             isUser: true,
@@ -189,10 +116,13 @@ export default function Chat() {
         const messageText = inputValue;
         setInputValue('');
         setError(null);
+        
+        // Reset scroll state when sending a new message
+        resetScrollState();
 
         // Create streaming AI message placeholder with a unique ID
         const aiMessageId = crypto.randomUUID();
-        const aiMessage: Message = {
+        const aiMessage = {
             id: aiMessageId,
             text: '',
             isUser: false,
@@ -266,37 +196,23 @@ export default function Chat() {
         }
     };
 
-    const clearSession = async () => {
-        if (sessionId) {
-            try {
-                await chatApi.clearSession(sessionId);
-                setSessionId(null);
-                setMessages(getInitialMessages(t));
-                setError(null);
-
-                // Clear localStorage
-                localStorage.removeItem(SESSION_STORAGE_KEY);
-                localStorage.removeItem(MESSAGES_STORAGE_KEY);
-
-                toast({
-                    title: t('chat.clearSession'),
-                    description: t('chat.sessionClearedSuccessfully'),
-                    variant: 'success',
-                });
-            } catch (err) {
-                console.error('Failed to clear session:', err);
-
-                const errorMessage =
-                    err instanceof ApiError
-                        ? err.message
-                        : t('chat.failedToClearSession');
-
-                toast({
-                    title: t('chat.clearSession'),
-                    description: errorMessage,
-                    variant: 'destructive',
-                });
-            }
+    const handleClearSession = async () => {
+        const result = await clearSessionData();
+        
+        if (result.success) {
+            setError(null);
+            resetScrollState();
+            toast({
+                title: t('chat.clearSession'),
+                description: t('chat.sessionClearedSuccessfully'),
+                variant: 'success',
+            });
+        } else {
+            toast({
+                title: t('chat.clearSession'),
+                description: result.error || t('chat.failedToClearSession'),
+                variant: 'destructive',
+            });
         }
     };
 
@@ -333,177 +249,40 @@ export default function Chat() {
 
             <main className="pt-20 px-6 pb-6">
                 <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
-                    {/* Header */}
-                    <div className="mb-6">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h1 className="text-hero mb-2">
-                                    {t('chat.silverAgent')}
-                                </h1>
-                                <p className="text-sub">
-                                    {t('chat.yourAIFinancialCopilot')}
-                                </p>
-                            </div>
-                            {sessionId && (
-                                <button
-                                    onClick={clearSession}
-                                    className="btn-ghost px-3 py-1 text-xs rounded-lg"
-                                    title={t('chat.clearSessionTooltip')}
-                                >
-                                    {t('chat.clearSession')}
-                                </button>
-                            )}
-                        </div>
-                        {error && (
-                            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
-                                {error}
-                            </div>
-                        )}
-                    </div>
+                    <ChatHeader error={error} />
 
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto space-y-6 mb-6">
-                        {isLoadingSession && (
-                            <div className="flex justify-center items-center h-32">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                <span className="ml-2 text-muted-foreground">
-                                    {t('chat.loadingSession')}
-                                </span>
-                            </div>
-                        )}
-                        {messages.map((message) => {
-                            // Handle streaming AI messages
-                            if (!message.isUser && message.isStreaming) {
-                                return (
-                                    <StreamingMessage
-                                        key={message.id}
-                                        text={streamedText}
-                                        isThinking={isThinking}
-                                        isStreaming={isStreaming}
-                                        timestamp={message.timestamp}
-                                        onCancel={cancelStream}
-                                    />
-                                );
-                            }
+                    <ChatMessages
+                        ref={messagesContainerRef}
+                        messages={messages}
+                        isLoadingSession={isLoadingSession}
+                        streamedText={streamedText}
+                        isThinking={isThinking}
+                        isStreaming={isStreaming}
+                        onCancelStream={cancelStream}
+                        messagesEndRef={messagesEndRef}
+                        userScrolled={userScrolled}
+                        showScrollButton={showScrollButton}
+                    />
 
-                            // Handle user messages
-                            if (message.isUser) {
-                                return (
-                                    <div
-                                        key={message.id}
-                                        className="flex justify-end animate-fade-in-up"
-                                    >
-                                        <div className="max-w-[80%] bg-primary text-primary-foreground p-4 rounded-lg">
-                                            <p className="text-nav">
-                                                {message.text}
-                                            </p>
-                                            <span className="text-xs opacity-60 mt-2 block">
-                                                {message.timestamp.toLocaleTimeString(
-                                                    [],
-                                                    {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    }
-                                                )}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            }
+                    <ScrollToBottomButton 
+                        show={showScrollButton} 
+                        onClick={scrollToBottom} 
+                    />
 
-                            // Handle regular AI messages
-                            return (
-                                <StreamingMessage
-                                    key={message.id}
-                                    text={message.text}
-                                    isThinking={false}
-                                    isStreaming={false}
-                                    timestamp={message.timestamp}
-                                />
-                            );
-                        })}
-                    </div>
+                    <QuickActions
+                        actions={quickActions}
+                        sessionId={sessionId}
+                        onClearSession={handleClearSession}
+                    />
 
-                    {/* Quick Actions */}
-                    <div className="mb-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {quickActions.map((action) => (
-                                <button
-                                    key={action.label}
-                                    onClick={action.action}
-                                    className="btn-ghost px-3 py-2 text-xs rounded-lg text-left"
-                                >
-                                    {action.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="card-silver rounded-lg">
-                        <div className="p-4">
-                            <div className="flex space-x-4">
-                                <input
-                                    type="text"
-                                    value={inputValue}
-                                    onChange={(e) =>
-                                        setInputValue(e.target.value)
-                                    }
-                                    onKeyDown={(e) =>
-                                        e.key === 'Enter' &&
-                                        !e.shiftKey &&
-                                        !isStreaming &&
-                                        handleSendMessage()
-                                    }
-                                    placeholder={t('chat.placeholder')}
-                                    className="flex-1 bg-transparent border-none outline-none text-nav placeholder:text-muted-foreground relative z-10"
-                                />
-
-                                <div className="flex items-center space-x-2 relative z-10">
-                                    {/* File Upload */}
-                                    <button
-                                        onClick={handleFileUpload}
-                                        className="p-2 hover:bg-accent rounded-lg transition-colors"
-                                        title={t('chat.uploadFile')}
-                                    >
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                                            />
-                                        </svg>
-                                    </button>
-
-                                    {/* Send Button */}
-                                    <button
-                                        onClick={handleSendMessage}
-                                        disabled={
-                                            !inputValue.trim() || isStreaming
-                                        }
-                                        className="btn-primary px-4 py-2 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isStreaming
-                                            ? 'Streaming...'
-                                            : t('chat.send')}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".csv,.pdf"
-                                className="hidden"
-                            />
-                        </div>
-                    </div>
+                    <ChatInput
+                        inputValue={inputValue}
+                        onInputChange={setInputValue}
+                        onSendMessage={handleSendMessage}
+                        onFileUpload={handleFileUpload}
+                        isStreaming={isStreaming}
+                        fileInputRef={fileInputRef}
+                    />
                 </div>
             </main>
         </div>

@@ -206,7 +206,6 @@ class ChatAgent:
                 }
             )
 
-            logger.info(f"Classified intent: {intent}")
             return intent
 
         except Exception as e:

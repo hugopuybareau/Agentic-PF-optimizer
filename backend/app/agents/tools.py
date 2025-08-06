@@ -128,7 +128,7 @@ class NewsSearchTool:
 class ClassificationTool:
     def __init__(self):
         self.llm = AzureChatOpenAI(
-            azure_endpoint="https://hugo-mbm3qhjz-swedencentral.cognitiveservices.azure.com/",
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
             azure_deployment="gpt-4o-mini",
             api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
             api_version="2025-01-01-preview",
@@ -200,7 +200,7 @@ class ClassificationTool:
 class AnalysisTool:
     def __init__(self):
         self.llm = AzureChatOpenAI(
-            azure_endpoint="https://hugo-mbm3qhjz-swedencentral.cognitiveservices.azure.com/",
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
             azure_deployment="gpt-4o-mini",
             api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
             api_version="2025-01-01-preview",
@@ -316,7 +316,7 @@ class AnalysisTool:
 class PortfolioSummarizerTool:
     def __init__(self):
         self.llm = AzureChatOpenAI(
-            azure_endpoint="https://hugo-mbm3qhjz-swedencentral.cognitiveservices.azure.com/",
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
             azure_deployment="gpt-4o-mini",
             api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
             api_version="2025-01-01-preview",

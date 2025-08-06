@@ -67,16 +67,10 @@ async def send_message(
     request: ChatMessage,
     current_user: Annotated[User | None, Depends(get_current_user_optional)]
 ):
-    """
-    Send a message to the portfolio chat agent.
-    The agent will help users build their portfolio conversationally.
-    """
     try:
         agent = get_chat_agent()
-        # Generate session ID if not provided
         session_id = request.session_id or str(uuid.uuid4())
         user_id = str(current_user.id) if current_user else None
-        # Process the message
         result = agent.process_message(
             session_id=session_id,
             user_message=request.message,

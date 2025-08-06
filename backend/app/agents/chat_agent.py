@@ -53,11 +53,6 @@ class ChatAgent:
         self.graph = self._build_graph()
         self.session_storage = get_session_storage()
 
-    # def _create_tools(self):
-    #     """Create LangChain tools from our methods for better observability."""
-    #     # Tools are now created but used properly to maintain Langfuse tracing
-    #     pass
-
     def _build_graph(self) -> StateGraph:
         logger.info("Building chat agent workflow graph")
         workflow = StateGraph(ChatAgentState)
@@ -96,6 +91,13 @@ class ChatAgent:
         )
         state["intent"] = result
         logger.info(f"Intent classified as: {result}")
+
+        try:
+            langfuse_context.update_current_observation(
+                metadata={"intent": result}
+            )
+        except Exception as e:
+            logger.error(f"Failed to update Langfuse metadata: {e}")
         return state
 
     @observe(name="extract_entities_node")
@@ -339,7 +341,9 @@ class ChatAgent:
     ) -> dict[str, Any]:
 
         messages: list[BaseMessage] = [
-            SystemMessage(content=f"""You are a friendly portfolio assistant helping users build their investment portfolio.
+            SystemMessage(content=
+        f"""
+            You are a friendly portfolio assistant helping users build their investment portfolio.
 
             Current portfolio state:
             {self._get_portfolio_summary(portfolio_state)}
@@ -348,7 +352,7 @@ class ChatAgent:
             Extracted entities: {json.dumps(entities)}
 
             Guidelines:
-            - Be conversational and helpful
+            - Be conversational and helpful, your goal to make the user create a complete portfolio in our database.
             - Reference previous conversation when relevant
             - If information is missing, ask for specific details
             - Confirm when assets are added/removed
@@ -356,7 +360,8 @@ class ChatAgent:
             - Keep responses concise but informative
             - Remember what the user has already told you
 
-            Generate an appropriate response based on the conversation history.""")
+            Generate an appropriate response based on the conversation history.
+        """)
         ]
 
         for msg in session.messages[-8:]:

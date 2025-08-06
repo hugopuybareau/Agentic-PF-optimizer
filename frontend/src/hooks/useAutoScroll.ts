@@ -1,12 +1,13 @@
 // frontend/src/hooks/useAutoScroll.ts
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 export function useAutoScroll() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [userScrolled, setUserScrolled] = useState(false);
+    const scrollHandlerRef = useRef<(() => void) | null>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,41 +24,39 @@ export function useAutoScroll() {
         }, [messages, streamedText, userScrolled, isLoadingSession]);
     };
 
+    const handleScroll = useCallback(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isAtBottom = scrollHeight - scrollTop <= clientHeight + 50;
+        
+        if (!isAtBottom) {
+            setUserScrolled(true);
+            setShowScrollButton(true);
+        } else {
+            setUserScrolled(false);
+            setShowScrollButton(false);
+        }
+    }, []);
+
     // Handle scroll detection to show/hide scroll button
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
 
-        const handleScroll = () => {
-            const { scrollTop, scrollHeight, clientHeight } = container;
-            const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100; // Increased threshold to 100px
-            
-            // Debug logging
-            console.log('Scroll Debug:', {
-                scrollTop,
-                scrollHeight,
-                clientHeight,
-                isAtBottom,
-                userScrolled,
-                showScrollButton
-            });
-            
-            if (!isAtBottom && !userScrolled) {
-                setUserScrolled(true);
-                setShowScrollButton(true);
-            } else if (isAtBottom && userScrolled) {
-                setUserScrolled(false);
-                setShowScrollButton(false);
-            }
-        };
-
-        container.addEventListener('scroll', handleScroll);
+        scrollHandlerRef.current = handleScroll;
+        container.addEventListener('scroll', handleScroll, { passive: true });
         
         // Initial check
-        handleScroll();
+        setTimeout(() => handleScroll(), 100);
         
-        return () => container.removeEventListener('scroll', handleScroll);
-    }, [userScrolled]);
+        return () => {
+            if (scrollHandlerRef.current) {
+                container.removeEventListener('scroll', scrollHandlerRef.current);
+            }
+        };
+    }, []);
 
     const resetScrollState = () => {
         setUserScrolled(false);

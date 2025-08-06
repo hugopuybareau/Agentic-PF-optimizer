@@ -248,7 +248,7 @@ export default function Chat() {
             <Navigation />
 
             <main className="pt-20 px-6 pb-6">
-                <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
+                <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col relative">
                     <ChatHeader error={error} />
 
                     <ChatMessages

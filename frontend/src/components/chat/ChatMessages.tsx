@@ -105,11 +105,6 @@ export const ChatMessages = forwardRef<HTMLDivElement, ChatMessagesProps>(
                     })}
                     <div ref={messagesEndRef} />
                 </div>
-
-                {/* Debug indicator - remove this later */}
-                <div className="absolute top-2 right-2 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                    Scroll: {userScrolled ? 'UP' : 'BOTTOM'} | Btn: {showScrollButton ? 'SHOW' : 'HIDE'}
-                </div>
             </div>
         );
     }

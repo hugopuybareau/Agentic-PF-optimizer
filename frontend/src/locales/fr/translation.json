@@ -52,7 +52,8 @@
         "failedToClearSession": "Échec de l'effacement de la session. Veuillez réessayer.",
         "errorOccurred": "Une erreur est survenue",
         "failedToSend": "Échec de l'envoi du message. Veuillez réessayer.",
-        "loadingSession": "Restauration de la session..."
+        "loadingSession": "Restauration de la session...",
+        "scrollToBottom": "Faire défiler vers le bas"
     },
     "error": {
         "occured": "Une erreur est survenue",

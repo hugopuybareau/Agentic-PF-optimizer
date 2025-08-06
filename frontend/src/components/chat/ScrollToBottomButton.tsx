@@ -15,11 +15,11 @@ export function ScrollToBottomButton({ show, onClick }: ScrollToBottomButtonProp
     return (
         <button
             onClick={onClick}
-            className="absolute bottom-20 right-4 bg-primary text-primary-foreground p-3 rounded-full shadow-xl hover:bg-primary/90 transition-all duration-200 animate-pulse z-20 border-2 border-background"
+            className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-50 bg-background border border-border text-foreground p-2 rounded-full shadow-lg hover:shadow-xl hover:bg-muted transition-all duration-200 flex items-center justify-center"
             title={t('chat.scrollToBottom', 'Scroll to bottom')}
         >
             <svg
-                className="w-5 h-5"
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

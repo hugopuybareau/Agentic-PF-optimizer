@@ -68,15 +68,19 @@ async def send_message(
     current_user: Annotated[User | None, Depends(get_current_user_optional)]
 ):
     try:
+        logger.info(f"Received chat message: session={request.session_id}, user={current_user.id if current_user else 'anonymous'}")
         agent = get_chat_agent()
         session_id = request.session_id or str(uuid.uuid4())
         user_id = str(current_user.id) if current_user else None
+
+        logger.debug(f"Processing message with session_id={session_id}, user_id={user_id}")
         result = agent.process_message(
             session_id=session_id,
             user_message=request.message,
             user_id=user_id
         )
 
+        logger.info(f"Chat message processed successfully for session {session_id}")
         return ChatResponse(**result)
 
     except Exception as e:

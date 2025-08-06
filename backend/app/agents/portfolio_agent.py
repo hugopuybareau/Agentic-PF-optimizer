@@ -51,6 +51,7 @@ class PortfolioAgent:
     #     pass
 
     def _build_graph(self) -> StateGraph:
+        logger.info("Building portfolio agent workflow graph")
         workflow = StateGraph(AgentState)
 
         workflow.add_node("initialize", self._initialize_node)
@@ -77,10 +78,12 @@ class PortfolioAgent:
         workflow.add_edge("create_digest", "store_results")
         workflow.add_edge("store_results", END)
 
+        logger.info("Portfolio agent workflow graph compiled successfully")
         return workflow.compile() # type: ignore
 
     @observe(name="initialize_node")
     def _initialize_node(self, state: AgentState) -> AgentState:
+        logger.info("Starting portfolio analysis - Initialize node")
         result = self._initialize_analysis_wrapped(
             portfolio=state["portfolio"],
             task_type=state["task_type"],
@@ -95,47 +98,58 @@ class PortfolioAgent:
         state["recommendations"] = result.get("recommendations", [])
         state["risk_alerts"] = result.get("risk_alerts", [])
         state["errors"] = result.get("errors", [])
+        logger.info(f"Initialize node completed - {len(state['assets_to_analyze'])} assets to analyze")
         return state
 
     #nodes
     @observe(name="search_vector_db_node")
     def _search_vector_db_node(self, state: AgentState) -> AgentState:
+        logger.info("Searching vector database for existing information")
         result = self._search_vector_db_wrapped(
             assets=state["assets_to_analyze"],
             days_back=7
         )
         state["vector_context"] = result
+        found_items = result.get("found_items", 0)
+        logger.info(f"Vector DB search completed - Found {found_items} relevant items")
         return state
 
     @observe(name="search_news_node")
     def _search_news_node(self, state: AgentState) -> AgentState:
+        logger.info("Starting news search for assets")
         result = self._search_news_wrapped(
             assets=state["assets_to_analyze"],
             use_bing=False
         )
         state["raw_news"] = result
+        logger.info(f"News search completed - Found {len(result)} news items across all assets")
         return state
 
     @observe(name="classify_news_node")
     def _classify_news_node(self, state: AgentState) -> AgentState:
+        logger.info(f"Classifying {len(state['raw_news'])} news items")
         result = self._classify_news_wrapped(
             news_items=state["raw_news"],
             assets=state["assets_to_analyze"]
         )
         state["classified_news"] = result
+        logger.info(f"News classification completed - {len(result)} items classified")
         return state
 
     @observe(name="analyze_assets_node")
     def _analyze_assets_node(self, state: AgentState) -> AgentState:
+        logger.info(f"Starting detailed analysis of {len(state['assets_to_analyze'])} assets")
         result = self._analyze_assets_wrapped(
             assets=state["assets_to_analyze"],
             classified_news=state.get("classified_news", [])
         )
         state["analysis_results"] = result
+        logger.info(f"Asset analysis completed - Generated {len(result)} analysis results")
         return state
 
     @observe(name="create_digest_node")
     def _create_digest_node(self, state: AgentState) -> AgentState:
+        logger.info("Creating portfolio digest and final response")
         result = self._create_digest_wrapped(
             analysis_results=state["analysis_results"],
             task_type=state["task_type"]
@@ -143,10 +157,12 @@ class PortfolioAgent:
         state["final_response"] = result.get("final_response", "")
         state["recommendations"] = result.get("recommendations", [])
         state["risk_alerts"] = result.get("risk_alerts", [])
+        logger.info(f"Digest created - {len(state['recommendations'])} recommendations, {len(state['risk_alerts'])} risk alerts")
         return state
 
     @observe(name="store_results_node")
     def _store_results_node(self, state: AgentState) -> AgentState:
+        logger.info("Storing analysis results to vector database")
         self._store_results_wrapped(
             portfolio=state["portfolio"],
             analysis_summary={
@@ -156,6 +172,7 @@ class PortfolioAgent:
                 "risk_alerts": state.get("risk_alerts", [])
             }
         )
+        logger.info("Results stored successfully")
         return state
 
     #tools
@@ -167,13 +184,22 @@ class PortfolioAgent:
         user_query: str = ""
     ) -> dict[str, Any]:
         """Initialize analysis - wrapped for tool use."""
-        logger.info(f"Starting {task_type} for portfolio with {len(portfolio.assets)} assets")
+        logger.info(f"Initializing {task_type} analysis for portfolio with {len(portfolio.assets)} assets")
+
+        # Log asset types for visibility
+        asset_types = [asset.type for asset in portfolio.assets]
+        asset_summary = {}
+        for asset_type in asset_types:
+            asset_summary[asset_type] = asset_summary.get(asset_type, 0) + 1
+
+        logger.info(f"Portfolio composition: {asset_summary}")
 
         langfuse_context.update_current_observation(
             metadata={
                 "task_type": task_type,
                 "asset_count": len(portfolio.assets),
-                "user_query": user_query
+                "user_query": user_query,
+                "asset_types": asset_summary
             }
         )
 
@@ -191,7 +217,7 @@ class PortfolioAgent:
 
     @observe(name="search_vector_db_tool")
     def _search_vector_db_wrapped(self, assets: list[Asset], days_back: int = 7) -> dict[str, Any]:
-        logger.info("Searching vector database for existing information")
+        logger.info(f"Searching vector database for existing information (last {days_back} days)")
 
         try:
             portfolio_queries = []
@@ -201,26 +227,34 @@ class PortfolioAgent:
                 if asset.type == "stock":
                     query = f"{asset.ticker} stock analysis news"
                     asset_key = f"stock:{asset.ticker}"
+                    logger.debug(f"Added stock query: {query}")
                 elif asset.type == "crypto":
                     query = f"{asset.symbol} cryptocurrency price analysis"
                     asset_key = f"crypto:{asset.symbol}"
+                    logger.debug(f"Added crypto query: {query}")
                 elif asset.type == "real_estate":
                     query = f"real estate market analysis {asset.address}"
                     asset_key = f"real_estate:{asset.address}"
+                    logger.debug(f"Added real estate query: {query}")
                 elif asset.type == "mortgage":
                     query = "mortgage rates housing market analysis"
                     asset_key = f"mortgage:{asset.lender}"
+                    logger.debug(f"Added mortgage query: {query}")
                 elif asset.type == "cash":
                     query = f"{asset.currency} currency analysis inflation"
                     asset_key = f"cash:{asset.currency}"
+                    logger.debug(f"Added cash query: {query}")
                 else:
+                    logger.warning(f"Unknown asset type: {asset.type}")
                     continue
 
                 portfolio_queries.append(query)
                 asset_keys.append(asset_key)
 
+            logger.info(f"Executing {len(portfolio_queries)} vector database queries")
             vector_results = []
-            for query in portfolio_queries:
+            for i, query in enumerate(portfolio_queries):
+                logger.debug(f"Query {i+1}/{len(portfolio_queries)}: {query}")
                 results = self.vector_store.search_relevant_news(
                     query=query,
                     asset_keys=asset_keys,
@@ -228,15 +262,17 @@ class PortfolioAgent:
                     limit=5
                 )
                 vector_results.extend(results)
+                logger.debug(f"Found {len(results)} items for query {i+1}")
 
             langfuse_context.update_current_observation(
                 metadata={
                     "found_items": len(vector_results),
-                    "asset_keys_searched": asset_keys
+                    "asset_keys_searched": asset_keys,
+                    "queries_executed": len(portfolio_queries)
                 }
             )
 
-            logger.info(f"Found {len(vector_results)} relevant items in vector database")
+            logger.info(f"Vector DB search completed: {len(vector_results)} relevant items found")
             return {
                 "found_items": len(vector_results),
                 "results": vector_results
@@ -248,25 +284,30 @@ class PortfolioAgent:
 
     @observe(name="search_news_tool")
     def _search_news_wrapped(self, assets: list[Asset], use_bing: bool = False) -> list[NewsItem]:
-        logger.info("Searching for news for each asset")
+        news_source = "Bing" if use_bing else "default news API"
+        logger.info(f"Searching for news using {news_source} for {len(assets)} assets")
 
         all_news = []
 
-        for asset in assets:
+        for i, asset in enumerate(assets, 1):
             try:
+                asset_key = self.analysis_tool._get_asset_key(asset)
+                logger.info(f"🔍 Asset {i}/{len(assets)}: Searching news for {asset_key}")
+
                 news_items = self.news_search_tool.search_for_asset(asset, use_bing=use_bing)
 
                 # Add asset relation
                 for item in news_items:
-                    item.asset_related = self.analysis_tool._get_asset_key(asset)
+                    item.asset_related = asset_key
 
                 all_news.extend(news_items)
 
                 if news_items:
-                    asset_key = self.analysis_tool._get_asset_key(asset)
+                    logger.info(f"Found {len(news_items)} news items for {asset_key}")
                     self.vector_store.store_news_items(news_items, asset_key)
-
-                logger.info(f"Found {len(news_items)} news items for {asset.type}")
+                    logger.debug(f"Stored {len(news_items)} news items in vector DB for {asset_key}")
+                else:
+                    logger.warning(f"No news found for {asset_key}")
 
             except Exception as e:
                 logger.error(f"News search failed for {asset}: {e}")
@@ -274,10 +315,12 @@ class PortfolioAgent:
         langfuse_context.update_current_observation(
             metadata={
                 "total_news_found": len(all_news),
-                "assets_searched": len(assets)
+                "assets_searched": len(assets),
+                "news_source": news_source
             }
         )
 
+        logger.info(f"News search completed: {len(all_news)} total news items found across {len(assets)} assets")
         return all_news
 
     @observe(name="classify_news_tool")
@@ -286,7 +329,7 @@ class PortfolioAgent:
         news_items: list[NewsItem],
         assets: list[Asset]
     ) -> list[NewsItem]:
-        logger.info("Classifying news items")
+        logger.info(f"Classifying {len(news_items)} news items for {len(assets)} assets")
 
         classified_news = []
 
@@ -298,26 +341,36 @@ class PortfolioAgent:
                 asset_news_map[asset_key] = []
             asset_news_map[asset_key].append(news_item)
 
-        for asset in assets:
+        logger.info(f"News distribution: {[(k, len(v)) for k, v in asset_news_map.items()]}")
+
+        for i, asset in enumerate(assets, 1):
             asset_key = self.analysis_tool._get_asset_key(asset)
             items = asset_news_map.get(asset_key, [])
 
+            logger.info(f"Asset {i}/{len(assets)}: Classifying {len(items)} news items for {asset_key}")
+
+            classified_count = 0
             for news_item in items:
                 try:
                     classified_item = self.classification_tool.classify_news_item(news_item, asset)
                     classified_news.append(classified_item)
+                    classified_count += 1
                 except Exception as e:
-                    logger.error(f"Classification failed for news item: {e}")
+                    logger.error(f"❌ Classification failed for news item: {e}")
                     classified_news.append(news_item)
+
+            if items:
+                logger.info(f"Classified {classified_count}/{len(items)} items for {asset_key}")
 
         langfuse_context.update_current_observation(
             metadata={
                 "classified_count": len(classified_news),
-                "classification_rate": len(classified_news) / len(news_items) if news_items else 0
+                "classification_rate": len(classified_news) / len(news_items) if news_items else 0,
+                "asset_news_distribution": {k: len(v) for k, v in asset_news_map.items()}
             }
         )
 
-        logger.info(f"Classified {len(classified_news)} news items")
+        logger.info(f"News classification completed: {len(classified_news)}/{len(news_items)} items classified")
         return classified_news
 
     @observe(name="analyze_assets_tool")
@@ -326,37 +379,46 @@ class PortfolioAgent:
         assets: list[Asset],
         classified_news: list[NewsItem]
     ) -> list[AnalysisResult]:
-        logger.info("Analyzing assets")
+        logger.info(f"Starting detailed analysis of {len(assets)} assets with {len(classified_news)} classified news items")
 
         analysis_results = []
 
-        for asset in assets:
+        # Group news by asset for easier processing
+        news_by_asset = {}
+        for item in classified_news:
+            if item.asset_related not in news_by_asset:
+                news_by_asset[item.asset_related] = []
+            news_by_asset[item.asset_related].append(item)
+
+        for i, asset in enumerate(assets, 1):
             try:
                 asset_key = self.analysis_tool._get_asset_key(asset)
+                asset_news = news_by_asset.get(asset_key, [])
 
-                # Get news for this asset
-                asset_news = [
-                    item for item in classified_news
-                    if item.asset_related == asset_key
-                ]
+                logger.info(f"Asset {i}/{len(assets)}: Analyzing {asset_key} with {len(asset_news)} news items")
 
                 # Analyze
                 analysis_result = self.analysis_tool.analyze_asset(asset, asset_news)
                 analysis_results.append(analysis_result)
 
-                logger.info(f"Analysis completed for {asset_key}")
+                logger.info(f"Analysis completed for {asset_key} - Confidence: {analysis_result.confidence_score:.2f}")
+                logger.debug(f"Sentiment: {analysis_result.sentiment_summary}")
+                logger.debug(f"Recommendations: {len(analysis_result.recommendations)}")
 
             except Exception as e:
                 logger.error(f"Asset analysis failed for {asset}: {e}")
 
+        avg_confidence = sum(r.confidence_score for r in analysis_results) / len(analysis_results) if analysis_results else 0
+
         langfuse_context.update_current_observation(
             metadata={
                 "assets_analyzed": len(analysis_results),
-                "average_confidence": sum(r.confidence_score for r in analysis_results) / len(analysis_results) if analysis_results else 0
+                "average_confidence": avg_confidence,
+                "high_confidence_count": sum(1 for r in analysis_results if r.confidence_score > 0.7)
             }
         )
 
-        logger.info(f"Completed analysis for {len(analysis_results)} assets")
+        logger.info(f"Asset analysis completed: {len(analysis_results)} assets analyzed, avg confidence: {avg_confidence:.2f}")
         return analysis_results
 
     @observe(name="create_digest_tool")
@@ -476,19 +538,21 @@ class PortfolioAgent:
     def _should_search_news(self, state: AgentState) -> str:
         vector_context = state.get("vector_context") or {}
         found_items = vector_context.get("found_items", 0)
+        threshold = len(state["assets_to_analyze"]) * 2
 
         decision = "search_news"
-        if found_items >= len(state["assets_to_analyze"]) * 2:
-            logger.info("Sufficient recent data found in vector DB, skipping news search")
+        if found_items >= threshold:
+            logger.info(f"🎯 Sufficient recent data found in vector DB ({found_items} >= {threshold}), skipping news search")
             decision = "analyze"
         else:
-            logger.info("Insufficient recent data, proceeding with news search")
+            logger.info(f"🔍 Insufficient recent data ({found_items} < {threshold}), proceeding with news search")
 
         langfuse_context.update_current_observation(
             metadata={
                 "decision": decision,
                 "found_items": found_items,
-                "threshold": len(state["assets_to_analyze"]) * 2
+                "threshold": threshold,
+                "assets_count": len(state["assets_to_analyze"])
             }
         )
 
@@ -501,6 +565,7 @@ class PortfolioAgent:
         task_type: str = "analyze",
         user_query: str = ""
     ) -> dict:
+        logger.info(f"🚀 Starting portfolio analysis - Task: {task_type}, Assets: {len(portfolio.assets)}")
 
         trace = langfuse.trace( # type: ignore
             name="portfolio_analysis",
@@ -516,11 +581,12 @@ class PortfolioAgent:
         )
 
         try:
+            start_time = datetime.now()
             initial_state = {
                 "portfolio": portfolio,
                 "user_query": user_query,
                 "task_type": task_type,
-                "start_time": datetime.now().isoformat()
+                "start_time": start_time.isoformat()
             }
 
             langfuse_context.update_current_observation(
@@ -532,17 +598,27 @@ class PortfolioAgent:
                 }
             )
 
+            logger.info("Invoking analysis workflow graph")
             result = self.graph.invoke(initial_state) # type: ignore
+
+            execution_time = (datetime.now() - start_time).total_seconds()
+            logger.info(f"⏱️ Analysis workflow completed in {execution_time:.2f} seconds")
 
             response = {
                 "success": True,
                 "response": result.get("final_response", "Analysis completed"),
                 "recommendations": result.get("recommendations", []),
                 "risk_alerts": result.get("risk_alerts", []),
-                "assets_analyzed": len(result.get("processed_assets", [])),
-                "execution_time": result.get("execution_time", 0),
+                "assets_analyzed": len(result.get("analysis_results", [])),
+                "execution_time": execution_time,
                 "errors": result.get("errors", [])
             }
+
+            logger.info("Portfolio analysis completed successfully:")
+            logger.info(f"   - Assets analyzed: {response['assets_analyzed']}")
+            logger.info(f"   - Recommendations: {len(response['recommendations'])}")
+            logger.info(f"   - Risk alerts: {len(response['risk_alerts'])}")
+            logger.info(f"   - Execution time: {execution_time:.2f}s")
 
             trace.update(
                 output=response,
@@ -557,23 +633,27 @@ class PortfolioAgent:
             return response
 
         except Exception as e:
-            logger.error(f"Portfolio analysis failed: {e}")
+            execution_time = (datetime.now() - start_time).total_seconds() if 'start_time' in locals() else 0
+            logger.error(f"Portfolio analysis failed after {execution_time:.2f}s: {e}")
 
             error_response = {
                 "success": False,
                 "error": str(e),
-                "response": "Analysis failed due to system error"
+                "response": "Analysis failed due to system error",
+                "execution_time": execution_time
             }
 
             trace.update(
                 output=error_response,
-                metadata={"success": False, "error": str(e)}
+                metadata={"success": False, "error": str(e), "execution_time": execution_time}
             )
 
             return error_response
 
     def create_scheduled_digest(self, portfolio: Portfolio) -> dict:
+        logger.info("Creating scheduled portfolio digest")
         return self.analyze_portfolio(portfolio, task_type="digest")
 
     def get_portfolio_alerts(self, portfolio: Portfolio) -> dict:
+        logger.info("Generating portfolio alerts")
         return self.analyze_portfolio(portfolio, task_type="alert")

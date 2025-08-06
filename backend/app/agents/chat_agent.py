@@ -59,6 +59,7 @@ class ChatAgent:
     #     pass
 
     def _build_graph(self) -> StateGraph:
+        logger.info("Building chat agent workflow graph")
         workflow = StateGraph(ChatAgentState)
 
         # Use the tool-wrapped versions in the graph
@@ -82,40 +83,53 @@ class ChatAgent:
         workflow.add_edge("prepare_form", END)
         workflow.add_edge("generate_response", END)
 
+        logger.info("Chat agent workflow graph compiled successfully")
         return workflow.compile() # type: ignore
 
     # Nodes
     @observe(name="classify_intent_node")
     def _classify_intent_node(self, state: ChatAgentState) -> ChatAgentState:
+        logger.info("Classifying user intent from message")
         result = self._classify_intent_wrapped(
             session=state["session"],
             user_message=state["user_message"]
         )
         state["intent"] = result
+        logger.info(f"Intent classified as: {result}")
         return state
 
     @observe(name="extract_entities_node")
     def _extract_entities_node(self, state: ChatAgentState) -> ChatAgentState:
+        logger.info(f"Extracting entities for intent: {state['intent']}")
         result = self._extract_entities_wrapped(
             session=state["session"],
             user_message=state["user_message"],
             intent=state["intent"] or "unclear"
         )
         state["entities"] = result
+        logger.info(f"Entities extracted: {list(result.keys()) if result else 'none'}")
         return state
 
     @observe(name="update_portfolio_node")
     def _update_portfolio_node(self, state: ChatAgentState) -> ChatAgentState:
+        logger.info(f"Updating portfolio based on intent: {state['intent']}")
+        current_assets_count = len(state["session"].portfolio_state.assets)
         result = self._update_portfolio_wrapped(
             session=state["session"],
             entities=state["entities"],
             intent=state["intent"] or "unclear"
         )
         state["ui_hints"] = result.get("ui_hints", {})
+        new_assets_count = len(state["session"].portfolio_state.assets)
+        if new_assets_count != current_assets_count:
+            logger.info(f"Portfolio updated: {current_assets_count} → {new_assets_count} assets")
+        else:
+            logger.info("Portfolio state unchanged")
         return state
 
     @observe(name="generate_response_node")
     def _generate_response_node(self, state: ChatAgentState) -> ChatAgentState:
+        logger.info("Generating response to user")
         result = self._generate_response_wrapped(
             session=state["session"],
             user_message=state["user_message"],
@@ -125,10 +139,12 @@ class ChatAgent:
         )
         state["response"] = result["response"]
         state["ui_hints"] = result["ui_hints"]
+        logger.info(f"Response generated ({len(result['response'])} characters)")
         return state
 
     @observe(name="prepare_form_node")
     def _prepare_form_node(self, state: ChatAgentState) -> ChatAgentState:
+        logger.info("Preparing portfolio form for user review")
         result = self._prepare_form_wrapped(
             session=state["session"],
             portfolio_state=state["session"].portfolio_state
@@ -137,6 +153,7 @@ class ChatAgent:
         state["form_data"] = result.get("form_data")
         state["response"] = result.get("response", "")
         state["ui_hints"] = result.get("ui_hints", {})
+        logger.info(f"Form prepared with {len(result.get('form_data', {}).get('assets', []))} assets")
         return state
 
     # tools
@@ -689,6 +706,7 @@ class ChatAgent:
 
     @observe(name="process_message")
     def process_message(self, session_id: str, user_message: str, user_id: str | None = None) -> dict:
+        logger.info(f"Processing message for session {session_id}: '{user_message[:50]}{'...' if len(user_message) > 50 else ''}'")
 
         trace = langfuse.trace( # type: ignore
             name="chat_conversation",
@@ -704,10 +722,13 @@ class ChatAgent:
 
         session = self.session_storage.get(session_id)
         if not session:
+            logger.info(f"Creating new chat session: {session_id}")
             session = ChatSession(
                 session_id=session_id,
                 user_id=user_id
             )
+        else:
+            logger.info(f"Resuming existing session: {session_id} (messages: {len(session.messages)})")
 
         session.add_message("user", user_message)
 
@@ -734,6 +755,7 @@ class ChatAgent:
                 }
             )
 
+            logger.info("Invoking chat workflow graph")
             result = self.graph.invoke(initial_state) # type: ignore
 
             session.add_message("assistant", result["response"], {
@@ -769,11 +791,11 @@ class ChatAgent:
                 }
             )
 
-            logger.info(f"Processed message for session {session_id}: {len(session.portfolio_state.assets)} assets")
+            logger.info(f"Message processed successfully - Assets: {len(session.portfolio_state.assets)}, Show form: {result.get('show_form', False)}")
             return response
 
         except Exception as e:
-            logger.error(f"Chat processing failed: {e}", exc_info=True)
+            logger.error(f"Chat processing failed for session {session_id}: {e}", exc_info=True)
 
             trace.update(
                 output={"error": str(e)},
@@ -787,14 +809,19 @@ class ChatAgent:
             }
 
     def get_session_portfolio(self, session_id: str) -> Portfolio | None:
+        logger.debug(f"Retrieving portfolio for session: {session_id}")
         session = self.session_storage.get(session_id)
         if not session:
+            logger.warning(f"No session found for ID: {session_id}")
             return None
 
         if session.portfolio_state.assets:
+            logger.info(f"Found portfolio with {len(session.portfolio_state.assets)} assets for session {session_id}")
             return Portfolio(assets=session.portfolio_state.assets)
+        logger.info(f"No assets found in portfolio for session {session_id}")
         return None
 
     def clear_session(self, session_id: str):
+        logger.info(f"Clearing session: {session_id}")
         self.session_storage.delete(session_id)
-        logger.info(f"Cleared session: {session_id}")
+        logger.info(f"Session cleared: {session_id}")

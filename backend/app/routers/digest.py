@@ -22,6 +22,7 @@ digest_router = APIRouter()
 @digest_router.post("/digest")
 async def run_digest(request: PortfolioRequest):
     try:
+        logger.info(f"Received portfolio digest request with {len(request.portfolio.assets)} assets")
         agent = get_portfolio_agent()
 
         result = agent.analyze_portfolio(
@@ -30,8 +31,10 @@ async def run_digest(request: PortfolioRequest):
         )
 
         if not result["success"]:
+            logger.error(f"Portfolio analysis failed: {result.get('error', 'Unknown error')}")
             raise HTTPException(status_code=500, detail=f"Analysis failed: {result.get('error', 'Unknown error')}")
 
+        logger.info(f"Portfolio digest generated successfully - {result['assets_analyzed']} assets analyzed in {result['execution_time']:.2f}s")
         return {
             "success": True,
             "digest": {
@@ -100,13 +103,17 @@ async def get_portfolio_alerts(request: PortfolioRequest):
 @digest_router.post("/schedule-digest")
 async def schedule_digest(request: PortfolioRequest, background_tasks: BackgroundTasks):
     try:
+        logger.info(f"Scheduling background digest for portfolio with {len(request.portfolio.assets)} assets")
+
         def generate_background_digest():
+            logger.info("Starting background digest generation")
             agent = get_portfolio_agent()
             result = agent.create_scheduled_digest(request.portfolio)
             logger.info(f"Background digest completed: {result.get('assets_analyzed', 0)} assets analyzed")
 
         background_tasks.add_task(generate_background_digest)
 
+        logger.info("Digest generation task scheduled successfully")
         return {
             "success": True,
             "message": "Digest generation scheduled",

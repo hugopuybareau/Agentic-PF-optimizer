@@ -30,7 +30,7 @@ class EntityExtractor:
                 conversation_history.append(AIMessage(content=msg.content))
 
         messages = prompt_manager.build_messages(
-            system_prompt_name="entity-extractor",
+            system_prompt_name="chat-entity-extractor",
             user_content=user_message,
             conversation_history=conversation_history
         )
@@ -128,6 +128,7 @@ class EntityExtractor:
             logger.error(f"Failed to extract JSON from LLM response: {e}")
             return None
 
+    @observe(name="resolve_references")
     def resolve_references(self, entities: dict, session: ChatSession) -> dict:
         if session.portfolio_state.current_asset_type and not entities.get("type"):
             entities["type"] = session.portfolio_state.current_asset_type

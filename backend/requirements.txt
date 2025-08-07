@@ -25,3 +25,6 @@ redis
 pytest
 pytest-asyncio
 python-dotenv
+
+# Dev
+langfuse<3.0.0

@@ -7,6 +7,12 @@ services:
       - qdrant_data:/qdrant/storage
     environment:
       - QDRANT__SERVICE__HOST=0.0.0.0
+    restart: unless-stopped
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
 
   postgres:
     image: postgres:17
@@ -20,6 +26,11 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -27,6 +38,11 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -37,17 +53,31 @@ services:
     volumes:
       - ./backend/app:/backend/app
     depends_on:
-      - qdrant
-      - postgres
-      - redis
+      qdrant:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      - LOG_CFG=/backend/logs/logging.yml
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - ENVIRONMENT=production
+      - LOG_CFG=${LOG_CFG:-/backend/logs/logging.yml}
+      - QDRANT_HOST=${QDRANT_HOST:-qdrant}
+      - QDRANT_PORT=${QDRANT_PORT:-6333}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://myuser:mypass@postgres:5432/mydb}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_HOST=${LANGFUSE_HOST:-https://cloud.langfuse.com}
+      - LANGFUSE_ENABLED=${LANGFUSE_ENABLED:-true}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - NEWS_SEARCH_API_KEY=${NEWS_SEARCH_API_KEY}
+      - BING_SUBSCRIPTION_KEY=${BING_SUBSCRIPTION_KEY}
     env_file:
       - .env
     command: ["./wait-for-it.sh", "postgres:5432", "--", ".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    restart: unless-stopped
 
   frontend:
     build:
@@ -60,7 +90,49 @@ services:
       - frontend_node_modules:/frontend/node_modules
     restart: unless-stopped
 
+  # Optional: Self-hosted Langfuse (only runs with --profile self-hosted)
+  # langfuse-server:
+  #   image: langfuse/langfuse:latest
+  #   profiles: ["self-hosted"]
+  #   depends_on:
+  #     langfuse-postgres:
+  #       condition: service_healthy
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-postgres:5432/langfuse
+  #     - NEXTAUTH_URL=http://localhost:3001
+  #     - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET:-your-nextauth-secret-change-in-production}
+  #     - SALT=${LANGFUSE_SALT:-your-salt-value-change-in-production}
+  #     - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true
+  #     - TELEMETRY_ENABLED=false
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # langfuse-postgres:
+  #   image: postgres:15
+  #   profiles: ["self-hosted"]
+  #   environment:
+  #     - POSTGRES_USER=langfuse
+  #     - POSTGRES_PASSWORD=langfuse
+  #     - POSTGRES_DB=langfuse
+  #   volumes:
+  #     - langfuse_postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "55433:5432"  # Different port to avoid conflict with main postgres
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
 volumes:
   qdrant_data:
   frontend_node_modules:
   pg_data:
+  # langfuse_postgres_data:  # Only created when using self-hosted profile

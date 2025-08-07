@@ -52,7 +52,8 @@
         "failedToClearSession": "Failed to clear session. Please try again.",
         "errorOccurred": "An error occurred",
         "failedToSend": "Failed to send message. Please try again.",
-        "loadingSession": "Restoring session..."
+        "loadingSession": "Restoring session...",
+        "scrollToBottom": "Scroll to bottom"
     },
     "error": {
         "occured": "An error occurred",

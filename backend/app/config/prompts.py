@@ -95,7 +95,7 @@ class PromptManager:
     def _get_fallback_prompt(self, prompt_name: str, variables: dict[str, Any] | None = None) -> str:
 
         fallback_prompts = {
-            "chat/intent-classifier":
+            "chat-intent-classifier":
                 """You are a portfolio assistant helping users build their investment portfolio.
                 Classify the user's intent into one of these categories:
 
@@ -111,7 +111,7 @@ class PromptManager:
                 Consider the conversation history to understand context.
                 Return ONLY the intent category, nothing else.""",
 
-            "chat/entity-extractor":
+            "chat-entity-extractor":
                 """Extract investment details from the user message.
                 Look for:
                 - Asset type (stock, crypto, real_estate, mortgage, cash)
@@ -131,7 +131,7 @@ class PromptManager:
                 If information is missing, include what you found and mark missing fields as null.
                 DO NOT include any text outside the JSON object.""",
 
-            "tools/news-classifier":
+            "tools-news-classifier":
                 """You are a financial news classifier. Analyze the given news article and classify it with the following criteria:
 
                 1. SENTIMENT: positive, negative, or neutral
@@ -148,7 +148,7 @@ class PromptManager:
                     "reasoning": "Brief explanation of your classification"
                 }""",
 
-            "tools/asset-analyzer":
+            "tools-asset-analyzer":
                 """You are an expert financial advisor analyzing portfolio assets based on recent news.
 
                 Provide a comprehensive analysis including:
@@ -160,7 +160,7 @@ class PromptManager:
                 Be specific, actionable, and focus on risk management and optimization opportunities.
                 Consider both short-term news impacts and long-term portfolio health.""",
 
-            "chat/response-generator":
+            "chat-response-generator":
                 """You are a friendly portfolio assistant helping users build their investment portfolio.
 
                 Current portfolio state:

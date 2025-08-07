@@ -1,13 +1,9 @@
 # backend/app/agents/chat_agent.py
 
-import json
 import logging
 import os
-import re
 from datetime import datetime
-from typing import Any
 
-from langchain.schema import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
 from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
@@ -15,11 +11,15 @@ from langfuse.decorators import langfuse_context, observe
 from langgraph.graph import END, StateGraph
 from pydantic import SecretStr
 
-from ..config.prompts import prompt_manager
-from ..models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from ..models.portfolio import Portfolio
+from .modules.entity_extractor import EntityExtractor
+from .modules.form_preparer import FormPreparer
+from .modules.intent_classifier import IntentClassifier
+from .modules.portfolio_operations import PortfolioOperations
+from .modules.response_generator import ResponseGenerator
+from .modules.workflow_utils import WorkflowUtils
 from .session_storage import get_session_storage
-from .state.chat_state import ChatAgentState, ChatSession, PortfolioBuildingState
+from .state.chat_state import ChatAgentState, ChatSession
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,13 @@ class ChatAgent:
             callbacks=[self.langfuse_handler]
         )
 
-        # self._create_tools()
+        # Initialize modular components
+        self.intent_classifier = IntentClassifier(self.llm)
+        self.entity_extractor = EntityExtractor(self.llm)
+        self.portfolio_operations = PortfolioOperations()
+        self.response_generator = ResponseGenerator(self.llm)
+        self.form_preparer = FormPreparer()
+        self.workflow_utils = WorkflowUtils()
 
         self.graph = self._build_graph()
         self.session_storage = get_session_storage()
@@ -70,7 +76,7 @@ class ChatAgent:
         workflow.add_edge("extract_entities", "update_portfolio")
         workflow.add_conditional_edges(
             "update_portfolio",
-            self._should_show_form,
+            self.workflow_utils.should_show_form,
             {
                 "show_form": "prepare_form",
                 "continue": "generate_response"
@@ -86,7 +92,7 @@ class ChatAgent:
     @observe(name="classify_intent_node")
     def _classify_intent_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info("Classifying user intent from message")
-        result = self._classify_intent_wrapped(
+        result = self.intent_classifier.classify_intent(
             session=state["session"],
             user_message=state["user_message"]
         )
@@ -104,11 +110,13 @@ class ChatAgent:
     @observe(name="extract_entities_node")
     def _extract_entities_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info(f"Extracting entities for intent: {state['intent']}")
-        result = self._extract_entities_wrapped(
+        entities = self.entity_extractor.extract_entities(
             session=state["session"],
             user_message=state["user_message"],
             intent=state["intent"] or "unclear"
         )
+        # Handle context-aware references
+        result = self.entity_extractor.resolve_references(entities, state["session"])
         state["entities"] = result
         logger.info(f"Entities extracted: {list(result.keys()) if result else 'none'}")
         return state
@@ -117,7 +125,7 @@ class ChatAgent:
     def _update_portfolio_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info(f"Updating portfolio based on intent: {state['intent']}")
         current_assets_count = len(state["session"].portfolio_state.assets)
-        result = self._update_portfolio_wrapped(
+        result = self.portfolio_operations.update_portfolio(
             session=state["session"],
             entities=state["entities"],
             intent=state["intent"] or "unclear"
@@ -133,7 +141,7 @@ class ChatAgent:
     @observe(name="generate_response_node")
     def _generate_response_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info("Generating response to user")
-        result = self._generate_response_wrapped(
+        result = self.response_generator.generate_response(
             session=state["session"],
             user_message=state["user_message"],
             intent=state["intent"] or "unclear",
@@ -148,7 +156,7 @@ class ChatAgent:
     @observe(name="prepare_form_node")
     def _prepare_form_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info("Preparing portfolio form for user review")
-        result = self._prepare_form_wrapped(
+        result = self.form_preparer.prepare_form(
             session=state["session"],
             portfolio_state=state["session"].portfolio_state
         )
@@ -158,520 +166,6 @@ class ChatAgent:
         state["ui_hints"] = result.get("ui_hints", {})
         logger.info(f"Form prepared with {len(result.get('form_data', {}).get('assets', []))} assets")
         return state
-
-    # tools
-    @observe(name="classify_intent_tool")
-    def _classify_intent_wrapped(self, session: ChatSession, user_message: str) -> str:
-        # Build conversation history for context
-        conversation_history: list[BaseMessage] = []
-        for msg in session.messages[-10:]:
-            if msg.role == "user":
-                conversation_history.append(HumanMessage(content=msg.content))
-            else:
-                conversation_history.append(AIMessage(content=msg.content))
-
-        # Use prompt manager to build messages with Langfuse prompt
-        messages = prompt_manager.build_messages(
-            system_prompt_name="chat-intent-classifier",
-            user_content=user_message,
-            conversation_history=conversation_history
-        )
-
-        try:
-            response = self.llm.invoke(messages)
-            intent_text = response.content
-
-            if isinstance(intent_text, list):
-                intent_text = next((item for item in intent_text if isinstance(item, str)), "")
-            elif hasattr(intent_text, 'content'):
-                intent_text = intent_text.content # type: ignore
-
-            intent = intent_text.strip().lower()
-
-            # Update Langfuse context
-            langfuse_context.update_current_observation(
-                metadata={
-                    "intent": intent,
-                    "session_id": session.session_id,
-                    "message_count": len(session.messages)
-                }
-            )
-
-            return intent
-
-        except Exception as e:
-            logger.error(f"Intent classification failed: {e}")
-            langfuse_context.update_current_observation(
-                metadata={"error": str(e)}
-            )
-            return "unclear"
-
-    @observe(name="extract_entities_tool")
-    def _extract_entities_wrapped(self, session: ChatSession, user_message: str, intent: str) -> dict[str, Any]:
-        if intent not in ["add_asset", "modify_asset", "remove_asset"]:
-            return {}
-
-        # Build conversation history for context
-        conversation_history: list[BaseMessage] = []
-        for msg in session.messages[-6:]:
-            if msg.role == "user":
-                conversation_history.append(HumanMessage(content=msg.content))
-            else:
-                conversation_history.append(AIMessage(content=msg.content))
-
-        # Use prompt manager to build messages with Langfuse prompt
-        messages = prompt_manager.build_messages(
-            system_prompt_name="entity-extractor",
-            user_content=user_message,
-            conversation_history=conversation_history
-        )
-
-        try:
-            response = self.llm.invoke(messages)
-            content = response.content
-
-            entities = self._extract_json_from_llm_response(content) # type: ignore
-
-            if entities:
-                logger.info(f"Successfully extracted entities: {entities}")
-                langfuse_context.update_current_observation(
-                    metadata={
-                        "entities_extracted": True,
-                        "entity_count": len(entities),
-                        "entities": entities
-                    }
-                )
-            else:
-                logger.warning("No entities extracted from response")
-                entities = {}
-
-            return entities
-
-        except Exception as e:
-            logger.error(f"Entity extraction failed: {e}")
-            langfuse_context.update_current_observation(
-                metadata={"error": str(e)}
-            )
-            return {}
-
-    @observe(name="update_portfolio_tool")
-    def _update_portfolio_wrapped(self, session: ChatSession, entities: dict[str, Any], intent: str) -> dict[str, Any]:
-        ui_hints = {}
-
-        # Handle context-aware references
-        entities = self._resolve_references(entities, session)
-
-        if intent == "add_asset" and entities:
-            try:
-                asset = self._create_asset_from_entities(entities)
-                if asset:
-                    session.portfolio_state.assets.append(asset)
-                    session.portfolio_state.current_asset_type = None
-                    session.portfolio_state.current_asset_data = {}
-                    ui_hints["asset_added"] = True
-
-                    logger.info(f"Added asset: {asset}")
-                    langfuse_context.update_current_observation(
-                        metadata={
-                            "asset_added": True,
-                            "asset_type": asset.type,
-                            "total_assets": len(session.portfolio_state.assets)
-                        }
-                    )
-                else:
-                    # Incomplete data
-                    session.portfolio_state.current_asset_type = entities.get("type")
-                    session.portfolio_state.current_asset_data.update(entities)
-                    ui_hints["needs_more_info"] = True
-
-            except Exception as e:
-                logger.error(f"Failed to create asset: {e}")
-                session.portfolio_state.validation_errors.append(str(e))
-
-        elif intent == "remove_asset" and entities:
-            identifier = entities.get("ticker") or entities.get("symbol") or entities.get("address")
-            if identifier:
-                original_count = len(session.portfolio_state.assets)
-                session.portfolio_state.assets = [
-                    a for a in session.portfolio_state.assets
-                    if not self._asset_matches(a, identifier)
-                ]
-                if len(session.portfolio_state.assets) < original_count:
-                    ui_hints["removed_asset"] = True
-                    logger.info(f"Removed asset with identifier: {identifier}")
-
-        elif intent == "complete_portfolio":
-            session.portfolio_state.is_complete = True
-            ui_hints["portfolio_complete"] = True
-
-        return {"ui_hints": ui_hints}
-
-    @observe(name="generate_response_tool")
-    def _generate_response_wrapped(
-        self,
-        session: ChatSession,
-        user_message: str,
-        intent: str,
-        entities: dict[str, Any],
-        portfolio_state: PortfolioBuildingState
-    ) -> dict[str, Any]:
-
-        # Build conversation history for context
-        conversation_history: list[BaseMessage] = []
-        for msg in session.messages[-8:]:
-            if msg.role == "user":
-                conversation_history.append(HumanMessage(content=msg.content))
-            else:
-                conversation_history.append(AIMessage(content=msg.content))
-
-        prompt_variables = {
-            "portfolio_summary": self._get_portfolio_summary(portfolio_state),
-            "intent": intent,
-            "entities": json.dumps(entities)
-        }
-
-        messages = prompt_manager.build_messages(
-            system_prompt_name="chat-response-generator",
-            user_content=user_message,
-            system_variables=prompt_variables,
-            conversation_history=conversation_history
-        )
-
-        try:
-            response = self.llm.invoke(messages)
-            content = response.content
-
-            if isinstance(content, list):
-                content = " ".join(str(item) for item in content if isinstance(item, str | dict))
-            elif hasattr(content, 'content'):
-                content = content.content # type: ignore
-
-            if not isinstance(content, str):
-                content = str(content)
-
-            ui_hints = {
-                "show_portfolio_summary": len(portfolio_state.assets) > 0,
-                "suggest_asset_types": len(portfolio_state.assets) < 2,
-                "current_asset_count": len(portfolio_state.assets)
-            }
-
-            langfuse_context.update_current_observation(
-                metadata={
-                    "response_length": len(content),
-                    "ui_hints": ui_hints
-                }
-            )
-
-            return {
-                "response": content,
-                "ui_hints": ui_hints
-            }
-
-        except Exception as e:
-            logger.error(f"Response generation failed: {e}")
-            return {
-                "response": "I encountered an error processing your request. Could you please rephrase?",
-                "ui_hints": {}
-            }
-
-    @observe(name="prepare_form_tool")
-    def _prepare_form_wrapped(self, session: ChatSession, portfolio_state: PortfolioBuildingState) -> dict[str, Any]:
-
-        form_assets = []
-        for asset in portfolio_state.assets:
-            asset_dict = {}
-            if isinstance(asset, Stock):
-                asset_dict = {
-                    "type": "stock",
-                    "ticker": asset.ticker,
-                    "shares": asset.shares
-                }
-            elif isinstance(asset, Crypto):
-                asset_dict = {
-                    "type": "crypto",
-                    "symbol": asset.symbol,
-                    "amount": asset.amount
-                }
-            elif isinstance(asset, RealEstate):
-                asset_dict = {
-                    "type": "real_estate",
-                    "address": asset.address,
-                    "market_value": asset.market_value
-                }
-            elif isinstance(asset, Mortgage):
-                asset_dict = {
-                    "type": "mortgage",
-                    "lender": asset.lender,
-                    "balance": asset.balance,
-                    "property_address": asset.property_address
-                }
-            elif isinstance(asset, Cash):
-                asset_dict = {
-                    "type": "cash",
-                    "currency": asset.currency,
-                    "amount": asset.amount
-                }
-
-            if asset_dict:
-                form_assets.append(asset_dict)
-
-        response = (
-            "Great! I've captured your portfolio so far. Please review the details below "
-            "and make any adjustments needed. You can also add any assets I might have missed."
-        )
-
-        ui_hints = {
-            "show_portfolio_form": True,
-            "form_mode": "review",
-            "can_edit": True,
-            "can_analyze": len(form_assets) > 0
-        }
-
-        langfuse_context.update_current_observation(
-            metadata={
-                "form_prepared": True,
-                "asset_count": len(form_assets),
-                "asset_types": list(set(a["type"] for a in form_assets))
-            }
-        )
-
-        return {
-            "show_form": True,
-            "form_data": {
-                "assets": form_assets,
-                "suggested_additions": self._suggest_missing_assets(portfolio_state.assets)
-            },
-            "response": response,
-            "ui_hints": ui_hints
-        }
-
-    # helpers
-    @observe(name="extract_json_from_llm")
-    def _extract_json_from_llm_response(self, content: str) -> dict[str, Any] | None:
-        try:
-            # If content is already a dict/list, return it
-            if isinstance(content, dict | list):
-                return content if isinstance(content, dict) else {"items": content}
-
-            # Convert to string if needed
-            if not isinstance(content, str):
-                content = str(content)
-
-            # Try to parse as-is first
-            try:
-                parsed = json.loads(content)
-                if isinstance(parsed, dict):
-                    return parsed
-                elif isinstance(parsed, list) and len(parsed) > 0:
-                    return parsed[0] if isinstance(parsed[0], dict) else {"items": parsed}
-                else:
-                    return {"data": parsed}
-            except json.JSONDecodeError:
-                pass
-
-            # Try to extract JSON from markdown code blocks
-            json_pattern = r'```(?:json)?\s*(\{[\s\S]*?\}|\[[\s\S]*?\])\s*```'
-            matches = re.findall(json_pattern, content, re.MULTILINE)
-
-            if matches:
-                for match in matches:
-                    try:
-                        parsed = json.loads(match)
-                        if isinstance(parsed, dict):
-                            return parsed
-                        elif isinstance(parsed, list):
-                            if len(parsed) > 0:
-                                return parsed[0] if isinstance(parsed[0], dict) else {"items": parsed}
-                            else:
-                                return {"items": parsed}
-                        else:
-                            return {"data": parsed}
-                    except json.JSONDecodeError:
-                        continue
-
-            # Try to find JSON without code blocks
-            json_like_pattern = r'(\{[^{}]*\}|\[[^\[\]]*\])'
-            matches = re.findall(json_like_pattern, content)
-
-            for match in matches:
-                try:
-                    parsed = json.loads(match)
-                    if isinstance(parsed, dict):
-                        return parsed
-                    elif isinstance(parsed, list) and len(parsed) > 0:
-                        return parsed[0] if isinstance(parsed[0], dict) else {"items": parsed}
-                    else:
-                        return {"data": parsed}
-                except json.JSONDecodeError:
-                    continue
-
-            return None
-
-        except Exception as e:
-            logger.error(f"Failed to extract JSON from LLM response: {e}")
-            return None
-
-    @observe(name="should_show_form")
-    def _should_show_form(self, state: ChatAgentState) -> str:
-        session = state["session"]
-
-        decision = "continue"
-        reason = "not_ready"
-
-        if session.portfolio_state.is_complete:
-            decision = "show_form"
-            reason = "portfolio_complete"
-        elif len(session.portfolio_state.assets) >= 2:
-            keywords = ["done", "finish", "complete", "review", "that's all", "that's it", "show me", "see my"]
-            user_msg_lower = state["user_message"].lower()
-            if any(keyword in user_msg_lower for keyword in keywords):
-                decision = "show_form"
-                reason = "user_indicated_completion"
-
-        langfuse_context.update_current_observation(
-            metadata={
-                "decision": decision,
-                "reason": reason,
-                "asset_count": len(session.portfolio_state.assets)
-            }
-        )
-
-        return decision
-
-    @observe(name="create_asset")
-    def _create_asset_from_entities(self, entities: dict) -> Asset | None:
-        asset_type = entities.get("type", "").lower()
-
-        try:
-            if asset_type == "stock":
-                if entities.get("ticker") and entities.get("shares"):
-                    return Stock(
-                        ticker=entities["ticker"].upper(),
-                        shares=float(entities["shares"])
-                    )
-
-            elif asset_type in ["crypto", "cryptocurrency"]:
-                if entities.get("symbol") and entities.get("amount"):
-                    return Crypto(
-                        symbol=entities["symbol"].upper(),
-                        amount=float(entities["amount"])
-                    )
-
-            elif asset_type in ["real_estate", "realestate", "property"]:
-                if entities.get("address") and (entities.get("value") or entities.get("market_value")):
-                    value = entities.get("value") or entities.get("market_value")
-                    if value is not None:
-                        return RealEstate(
-                            address=entities["address"],
-                            market_value=float(value)
-                        )
-
-            elif asset_type == "mortgage":
-                if entities.get("lender") and entities.get("balance"):
-                    return Mortgage(
-                        lender=entities["lender"],
-                        balance=float(entities["balance"]),
-                        property_address=entities.get("property_address")
-                    )
-
-            elif asset_type == "cash":
-                if entities.get("amount"):
-                    return Cash(
-                        currency=entities.get("currency", "USD"),
-                        amount=float(entities["amount"])
-                    )
-
-        except (ValueError, TypeError) as e:
-            logger.error(f"Asset creation failed: {e}")
-
-        return None
-
-    def _asset_matches(self, asset: Asset, identifier: str) -> bool:
-        identifier = identifier.upper()
-
-        if isinstance(asset, Stock):
-            return asset.ticker == identifier
-        elif isinstance(asset, Crypto):
-            return asset.symbol == identifier
-        elif isinstance(asset, RealEstate):
-            return identifier.lower() in asset.address.lower()
-        elif isinstance(asset, Mortgage):
-            return identifier.lower() in asset.lender.lower()
-        return False
-
-    def _resolve_references(self, entities: dict, session: ChatSession) -> dict:
-        if session.portfolio_state.current_asset_type and not entities.get("type"):
-            entities["type"] = session.portfolio_state.current_asset_type
-
-        if session.messages:
-            recent_amounts = []
-            for msg in session.messages[-4:]:
-                if msg.role == "assistant":
-                    continue
-                numbers = re.findall(r'\b\d+(?:\.\d+)?\b', msg.content)
-                recent_amounts.extend(numbers)
-
-            if not entities.get("amount") and not entities.get("shares") and recent_amounts:
-                if entities.get("type") == "stock":
-                    entities["shares"] = float(recent_amounts[-1])
-                else:
-                    entities["amount"] = float(recent_amounts[-1])
-
-        return entities
-
-    def _get_portfolio_summary(self, portfolio_state: PortfolioBuildingState) -> str:
-        if not portfolio_state.assets:
-            return "No assets in portfolio yet"
-
-        summary_parts = []
-        by_type: dict[str, list[Asset]] = {}
-
-        for asset in portfolio_state.assets:
-            asset_type = asset.type
-            if asset_type not in by_type:
-                by_type[asset_type] = []
-            by_type[asset_type].append(asset)
-
-        for asset_type, assets in by_type.items():
-            if asset_type == "stock":
-                stocks = [f"{a.ticker} ({a.shares} shares)" for a in assets if isinstance(a, Stock)]
-                summary_parts.append(f"Stocks: {', '.join(stocks)}")
-            elif asset_type == "crypto":
-                cryptos = [f"{a.symbol} ({a.amount})" for a in assets if isinstance(a, Crypto)]
-                summary_parts.append(f"Crypto: {', '.join(cryptos)}")
-            elif asset_type == "real_estate":
-                summary_parts.append(f"Real Estate: {len(assets)} properties")
-            elif asset_type == "mortgage":
-                summary_parts.append(f"Mortgages: {len(assets)} loans")
-            elif asset_type == "cash":
-                total_cash = sum(a.amount for a in assets if isinstance(a, Cash))
-                summary_parts.append(f"Cash: ${total_cash:,.2f}")
-
-        return "\n".join(summary_parts)
-
-    def _suggest_missing_assets(self, current_assets: list[Asset]) -> list[dict]: #to enhance
-        current_types = {asset.type for asset in current_assets}
-        suggestions = []
-
-        if "cash" not in current_types:
-            suggestions.append({
-                "type": "cash",
-                "message": "Emergency fund or savings account"
-            })
-
-        if "stock" not in current_types:
-            suggestions.append({
-                "type": "stock",
-                "message": "401(k) or individual stocks"
-            })
-
-        if "real_estate" not in current_types and "mortgage" in current_types:
-            suggestions.append({
-                "type": "real_estate",
-                "message": "Your mortgaged property value"
-            })
-
-        return suggestions
 
     @observe(name="process_message")
     def process_message(self, session_id: str, user_message: str, user_id: str | None = None) -> dict:

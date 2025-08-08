@@ -3,8 +3,10 @@ import logging
 from langchain.schema import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
 from langfuse.decorators import langfuse_context, observe
+from pydantic import ValidationError
 
 from ...config.prompts import prompt_manager
+from ..response_models import IntentClassificationResponse
 from ..state.chat_state import ChatSession
 
 logger = logging.getLogger(__name__)
@@ -30,15 +32,20 @@ class IntentClassifier:
         )
 
         try:
-            response = self.llm.invoke(messages)
-            intent_text = response.content
-
-            if isinstance(intent_text, list):
-                intent_text = next((item for item in intent_text if isinstance(item, str)), "")
-            elif hasattr(intent_text, 'content') and not isinstance(intent_text, str):
-                intent_text = intent_text.content
-
-            intent = intent_text.strip().lower()
+            raw_response = self.llm.with_structured_output(IntentClassificationResponse).invoke(messages, timeout=8)
+            try:
+                intent_response = IntentClassificationResponse.model_validate(raw_response)
+                intent = intent_response.intent
+            except ValidationError as ve:
+                logger.error(f"Intent validation error: {ve}", exc_info=True)
+                langfuse_context.update_current_observation(
+                    metadata={
+                        "error": f"Validation error: {ve}",
+                        "user_message": user_message,
+                        "session_id": session.session_id,
+                    }
+                )
+                intent = "unclear"
 
             langfuse_context.update_current_observation(
                 metadata={
@@ -51,8 +58,12 @@ class IntentClassifier:
             return intent
 
         except Exception as e:
-            logger.error(f"Intent classification failed: {e}")
+            logger.error(f"Intent classification failed: {e}", exc_info=True)
             langfuse_context.update_current_observation(
-                metadata={"error": str(e)}
+                metadata={
+                    "error": f"Exception: {e}",
+                    "user_message": user_message,
+                    "session_id": session.session_id
+                }
             )
             return "unclear"

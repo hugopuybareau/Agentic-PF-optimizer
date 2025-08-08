@@ -3,6 +3,7 @@
 import logging
 import os
 from datetime import datetime, timedelta
+from typing import cast
 
 import requests
 from langchain.schema import BaseMessage, HumanMessage, SystemMessage
@@ -11,9 +12,13 @@ from pydantic import SecretStr
 
 from ..config.prompts import prompt_manager
 from ..models.assets import Asset
+from .response_models import (
+    AssetAnalysisResponse,
+    NewsClassificationResponse,
+    PortfolioDigestResponse,
+)
 from .state.analysis import AnalysisResult
 from .state.news import NewsItem
-from .utils import safe_json_parse
 
 logger = logging.getLogger(__name__)
 
@@ -150,35 +155,12 @@ class ClassificationTool:
                 user_content=user_content
             )
 
-            response = self.llm.invoke(messages)
+            response = cast(NewsClassificationResponse, self.llm.with_structured_output(NewsClassificationResponse).invoke(messages))
 
-            try:
-                classification = safe_json_parse(response.content)
-            except Exception:
-                logger.error(f"Could not parse LLM response as JSON: {response.content}")
-                classification = {}
-
-            sentiment = classification.get('sentiment')
-            if not isinstance(sentiment, str) or sentiment not in ["positive", "negative", "neutral"]:
-                sentiment = "neutral"
-            impact = classification.get('impact')
-            if not isinstance(impact, str) or impact not in ["high", "medium", "low"]:
-                impact = "low"
-            relevance_score = classification.get('relevance_score')
-            try:
-                if relevance_score is not None:
-                    relevance_score = float(relevance_score)
-                    if not (0.0 <= relevance_score <= 1.0):
-                        relevance_score = 0.5
-                else:
-                    relevance_score = 0.5
-            except Exception:
-                relevance_score = 0.5
-
-            news_item.sentiment = sentiment
-            news_item.impact = impact
-            news_item.relevance_score = relevance_score
-            logger.debug(f"Classified news: {news_item.title[:50]}... - {sentiment}/{impact}/{relevance_score}")
+            news_item.sentiment = response.sentiment
+            news_item.impact = response.impact
+            news_item.relevance_score = response.relevance_score
+            logger.debug(f"Classified news: {news_item.title[:50]}... - {response.sentiment}/{response.impact}/{response.relevance_score}")
             return news_item
 
         except Exception as e:
@@ -209,15 +191,7 @@ class AnalysisTool:
             # Prepare user content for asset analysis
             user_content = f"""Asset: {asset_info}
                 Recent News Analysis:
-                {news_summary}
-
-                Please provide your analysis in JSON format:
-                {{
-                    "sentiment_summary": "...",
-                    "risk_assessment": "...",
-                    "recommendations": ["rec1", "rec2", "rec3"],
-                    "confidence_score": 0.0-1.0
-                }}"""
+                {news_summary}"""
 
             # Use prompt manager to build messages with Langfuse prompt
             messages = prompt_manager.build_messages(
@@ -225,20 +199,19 @@ class AnalysisTool:
                 user_content=user_content
             )
 
-            response = self.llm.invoke(messages)
+            response = cast(AssetAnalysisResponse, self.llm.with_structured_output(AssetAnalysisResponse).invoke(messages))
 
-            analysis = safe_json_parse(response.content)
             result = AnalysisResult(
                 asset_key=asset_key,
                 asset=asset,
                 news_items=classified_news,
-                sentiment_summary=analysis['sentiment_summary'],
-                risk_assessment=analysis['risk_assessment'],
-                recommendations=analysis['recommendations'],
-                confidence_score=analysis['confidence_score']
+                sentiment_summary=response.sentiment_summary,
+                risk_assessment=response.risk_assessment,
+                recommendations=response.recommendations,
+                confidence_score=response.confidence_score
             )
 
-            logger.info(f"Analysis completed for {asset_key} - Confidence: {analysis['confidence_score']}")
+            logger.info(f"Analysis completed for {asset_key} - Confidence: {response.confidence_score}")
             return result
 
         except Exception as e:
@@ -318,14 +291,7 @@ class PortfolioSummarizerTool:
             messages: list[BaseMessage] = [
                 SystemMessage(content="""You are a senior portfolio manager providing a comprehensive portfolio digest.
 
-                Synthesize the individual asset analyses into:
-                1. EXECUTIVE_SUMMARY: 2-3 sentence overview of portfolio health
-                2. KEY_RISKS: Top 3-5 portfolio-wide risks identified
-                3. OPPORTUNITIES: 2-3 optimization opportunities
-                4. IMMEDIATE_ACTIONS: Priority actions to take now
-                5. OVERALL_SENTIMENT: Current market sentiment affecting the portfolio
-                6. RISK_SCORE: Overall portfolio risk score (1-10, where 10 is highest risk)
-
+                Synthesize the individual asset analyses into the structured response format.
                 Be concise but actionable. Focus on portfolio-level insights, not individual assets."""),
                 HumanMessage(content=f"""Portfolio Analysis Results:
                 {analysis_summary}
@@ -333,9 +299,7 @@ class PortfolioSummarizerTool:
                 Please provide a comprehensive portfolio digest.""")
             ]
 
-            response = self.llm.invoke(messages)
-
-            digest_content = response.content
+            response = cast(PortfolioDigestResponse, self.llm.with_structured_output(PortfolioDigestResponse).invoke(messages))
 
             all_recommendations = []
             high_risk_alerts = []
@@ -346,7 +310,12 @@ class PortfolioSummarizerTool:
                     high_risk_alerts.append(f"{result.asset_key}: {result.risk_assessment}")
 
             digest = {
-                "summary": digest_content,
+                "executive_summary": response.executive_summary,
+                "key_risks": response.key_risks,
+                "opportunities": response.opportunities,
+                "immediate_actions": response.immediate_actions,
+                "overall_sentiment": response.overall_sentiment,
+                "risk_score": response.risk_score,
                 "total_assets_analyzed": len(analysis_results),
                 "high_confidence_analyses": len([r for r in analysis_results if r.confidence_score > 0.7]),
                 "portfolio_recommendations": list(set(all_recommendations)),  # duplicates

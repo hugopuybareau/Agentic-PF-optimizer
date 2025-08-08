@@ -8,6 +8,7 @@ from langchain_openai import AzureChatOpenAI
 from langfuse.decorators import langfuse_context, observe
 
 from ...config.prompts import prompt_manager
+from ..response_models import EntityExtractionResponse
 from ..state.chat_state import ChatSession
 
 logger = logging.getLogger(__name__)
@@ -36,15 +37,8 @@ class EntityExtractor:
         )
 
         try:
-            response = self.llm.invoke(messages)
-            content = response.content
-
-            if isinstance(content, list):
-                content = str(content)
-            elif not isinstance(content, str):
-                content = str(content)
-
-            entities = self._extract_json_from_llm_response(content)
+            response = self.llm.with_structured_output(EntityExtractionResponse).invoke(messages)
+            entities = EntityExtractionResponse(**response)
 
             if entities:
                 logger.info(f"Successfully extracted entities: {entities}")

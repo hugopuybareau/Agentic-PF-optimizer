@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
 import { Background } from '@/components/Background';
 import { useState, useEffect, memo } from 'react';
-import { Linkedin } from 'lucide-react';
 
 // Memoized typewriter component to prevent re-renders of parent
 const TypewriterText = memo(() => {
@@ -77,7 +76,15 @@ export default function Landing() {
                     className="p-2 rounded-lg hover:bg-accent transition-smooth"
                     aria-label="Visit Silver Agents on LinkedIn"
                 >
-                    <Linkedin className="w-4 h-4 text-[#0A66C2]" />
+                    <svg
+                        className="w-4 h-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 512 512"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <path fill="#007BB5" d="M474.078,0H37.783C16.975,0,0,16.536,0,36.884v438.195   C0,495.477,16.948,512,37.783,512h436.295C494.951,512,512,495.477,512,475.078V36.884C512,16.536,494.951,0,474.078,0z    M151.823,436.282h-76.08V191.956h76.08V436.282z M113.775,158.547c-24.385,0-44.07-19.735-44.07-44.046   c0-24.297,19.686-44.008,44.07-44.008c24.324,0,44.059,19.735,44.059,44.008C157.834,138.812,138.124,158.547,113.775,158.547z    M436.383,436.282h-75.918V317.444c0-28.298-0.525-64.771-39.496-64.771c-39.546,0-45.596,30.872-45.596,62.722v120.891H199.48   V191.956h72.868v33.372h1.051c10.125-19.198,34.922-39.472,71.896-39.472c76.896,0,91.116,50.608,91.116,116.389v134.037H436.383   L436.383,436.282z"/>
+                    </svg>
                 </a>
                 
                 <a

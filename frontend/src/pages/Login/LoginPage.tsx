@@ -1,10 +1,10 @@
 // frontend/src/pages/LoginPage.tsx
 
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import useAuthForm from '@/hooks/useAuthForm';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
     const { t } = useTranslation();
@@ -21,7 +21,7 @@ export default function LoginPage() {
         handleSubmit,
     } = useAuthForm();
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (success && mode === 'login') {
             login(); // Set authentication state
             setTimeout(() => navigate('/landing'), 1200);

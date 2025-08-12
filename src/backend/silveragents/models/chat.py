@@ -1,7 +1,5 @@
-# backend/app/models/chat.py
-
 from datetime import datetime
-from typing import Annotated, Any, TypedDict
+from typing import Any
 
 from pydantic import BaseModel
 

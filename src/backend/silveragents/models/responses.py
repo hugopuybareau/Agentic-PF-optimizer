@@ -1,5 +1,3 @@
-# backend/app/models/responses.py
-
 from enum import StrEnum
 from typing import Literal
 
@@ -7,6 +5,7 @@ from pydantic import BaseModel, Field
 
 
 class Intent(StrEnum):
+    START = "start"
     ADD_ASSET = "add_asset"
     REMOVE_ASSET = "remove_asset"
     MODIFY_ASSET = "modify_asset"

@@ -3,14 +3,13 @@ from typing import Annotated, Any, TypedDict
 
 from langchain.schema import HumanMessage
 
-from backend.app.models.portfolio_requests import ConfirmActionRequest
-from backend.app.models.responses import EntityExtractionResponse, Intent
-from backend.app.routers.chat import ChatResponse
-
 from .analysis import AnalysisResult, NewsItem
 from .assets import Asset
 from .chat import ChatSession
+from .chat_api import ChatResponse
 from .portfolio import Portfolio
+from .portfolio_requests import ConfirmActionRequest
+from .responses import EntityData, Intent
 
 
 class ChatAgentState(TypedDict):
@@ -23,7 +22,7 @@ class ChatAgentState(TypedDict):
     # Intent classification
     intent: Intent
     # Extracted entities
-    entities: EntityExtractionResponse
+    entities: list[EntityData]
     # Response to send
     response: ChatResponse
     # UI hints for frontend

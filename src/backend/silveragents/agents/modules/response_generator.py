@@ -8,8 +8,14 @@ from langfuse.decorators import langfuse_context, observe
 from pydantic import ValidationError
 
 from ...config.prompts import prompt_manager
+from ...models import (
+    ChatSession,
+    Intent,
+    PortfolioBuildingState,
+    ResponseGenerationResponse,
+    UIHints,
+)
 from ...models.assets import Asset, Cash, Crypto, Stock
-from ...models import ChatSession, Intent, PortfolioBuildingState, ResponseGenerationResponse, UIHints
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +28,7 @@ class ResponseGenerator:
     def generate_response(
         self,
         session: ChatSession,
-        user_message: str,
+        user_message: HumanMessage,
         intent: Intent,
         entities: dict[str, Any],
         portfolio_state: PortfolioBuildingState

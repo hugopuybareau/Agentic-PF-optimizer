@@ -33,7 +33,7 @@ class PortfolioOperations:
                         }
                     )
                 else:
-                    session.portfolio_state.current_asset_type = entities.get("type")
+                    session.portfolio_state.current_asset_type = entities.get("asset_type")
                     session.portfolio_state.current_asset_data.update(entities)
                     ui_hints["needs_more_info"] = True
 
@@ -61,7 +61,7 @@ class PortfolioOperations:
 
     @observe(name="create_asset")
     def _create_asset_from_entities(self, entities: dict) -> Asset | None:
-        asset_type = entities.get("type", "").lower()
+        asset_type = entities.get("asset_type", "").lower()
 
         try:
             if asset_type == "stock":

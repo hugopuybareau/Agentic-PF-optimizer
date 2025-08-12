@@ -1,5 +1,3 @@
-# backend/app/routers/chat_v2.py
-
 import asyncio
 import json
 import logging
@@ -18,38 +16,16 @@ from ..agents.services import PortfolioService
 from ..auth.dependencies import get_current_user_optional
 from ..db.base import get_db
 from ..db.models import User
-from ..models import Portfolio
+from ..models import (
+    ChatConfirmation,
+    ChatMessageRequest,
+    ChatResponse,
+    Portfolio,
+    PortfolioSubmission,
+)
 
 logger = logging.getLogger(__name__)
 
-
-# Request/Response models
-class ChatMessage(BaseModel):
-    message: str
-    session_id: str | None = None
-
-
-class ChatResponse(BaseModel):
-    message: str
-    session_id: str
-    ui_hints: dict | None = None
-    show_form: bool = False
-    form_data: dict | None = None
-    portfolio_summary: dict | None = None
-    confirmation_request: dict | None = None
-    requires_confirmation: bool = False
-
-
-class PortfolioSubmission(BaseModel):
-    session_id: str
-    portfolio: Portfolio
-    analyze_immediately: bool = True
-
-
-class ChatConfirmation(BaseModel):
-    session_id: str
-    confirmation_id: str
-    confirmed: bool
 
 
 # Initialize agents (in production, use dependency injection)
@@ -71,17 +47,17 @@ def get_portfolio_agent():
     return portfolio_agent
 
 
-chat_router_v2 = APIRouter(prefix="/chat", tags=["chat"])
+chat_router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@chat_router_v2.post("/message", response_model=ChatResponse)
+@chat_router.post("/message", response_model=ChatResponse)
 async def send_message(
-    request: ChatMessage,
+    request: ChatMessageRequest,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
     db: Annotated[Session, Depends(get_db)]
 ):
     """
-    Send a message to the portfolio chat agent.
+    Send a message to the chat agent.
 
     The agent will process the message, extract portfolio-related intents,
     and return a response that may include a confirmation request for
@@ -114,7 +90,7 @@ async def send_message(
         ) from e
 
 
-@chat_router_v2.post("/confirm", response_model=dict)
+@chat_router.post("/confirm", response_model=dict)
 async def confirm_action(
     request: ChatConfirmation,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
@@ -229,9 +205,9 @@ async def stream_chat_response(
         yield f"data: {json.dumps(error_data)}\n\n"
 
 
-@chat_router_v2.post("/message/stream")
+@chat_router.post("/message/stream")
 async def send_message_stream(
-    request: ChatMessage,
+    request: ChatMessageRequest,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
     db: Annotated[Session, Depends(get_db)]
 ):
@@ -267,7 +243,7 @@ async def send_message_stream(
         ) from e
 
 
-@chat_router_v2.post("/submit-portfolio")
+@chat_router.post("/submit-portfolio")
 async def submit_portfolio(
     submission: PortfolioSubmission,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
@@ -365,7 +341,7 @@ async def submit_portfolio(
         ) from e
 
 
-@chat_router_v2.get("/session/{session_id}")
+@chat_router.get("/session/{session_id}")
 async def get_session(
     session_id: str,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
@@ -425,7 +401,7 @@ async def get_session(
         ) from e
 
 
-@chat_router_v2.delete("/session/{session_id}")
+@chat_router.delete("/session/{session_id}")
 async def clear_session(
     session_id: str,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],

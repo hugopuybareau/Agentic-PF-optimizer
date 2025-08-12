@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .assets import AssetType
+
 
 class Intent(StrEnum):
     START = "start"
@@ -25,7 +27,7 @@ class EntityData(BaseModel):
     symbol: str | None = Field(None, description="Cryptocurrency symbol if mentioned")
     amount: float | None = Field(None, description="Dollar amount or quantity")
     shares: int | None = Field(None, description="Number of shares for stocks")
-    asset_type: Literal["stock", "crypto", "real_estate", "mortgage", "cash"] | None = Field(
+    asset_type: AssetType | None = Field(
         None, description="Type of asset being discussed"
     )
     currency: str | None = Field(None, description="Currency code (USD, EUR, etc.)")

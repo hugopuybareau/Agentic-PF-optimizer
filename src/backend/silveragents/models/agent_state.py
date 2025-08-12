@@ -1,7 +1,8 @@
 import operator
-from typing import Annotated, Any, TypedDict
+from typing import Annotated, Any
 
 from langchain.schema import HumanMessage
+from pydantic import BaseModel
 
 from .analysis import AnalysisResult, NewsItem
 from .assets import Asset
@@ -12,7 +13,7 @@ from .portfolio_requests import ConfirmActionRequest
 from .responses import EntityData, Intent
 
 
-class ChatAgentState(TypedDict):
+class ChatAgentState(BaseModel):
     # Current session
     session: ChatSession
     # Last user message
@@ -37,7 +38,7 @@ class ChatAgentState(TypedDict):
     errors: Annotated[list[str], lambda x, y: x + y]
 
 
-class AgentState(TypedDict):
+class AgentState(BaseModel):
     portfolio: Portfolio
     user_query: str | None
     task_type: str  # "analyze", "digest", "alert"

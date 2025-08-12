@@ -21,8 +21,9 @@ class WorkflowUtils:
             reason = "portfolio_complete"
         elif len(session.portfolio_state.assets) >= 2:
             keywords = ["done", "finish", "complete", "review", "that's all", "that's it", "show me", "see my"]
-            user_msg_lower = state["user_message"].lower()
-            if any(keyword in user_msg_lower for keyword in keywords):
+            user_msg = state["user_message"]
+            user_msg_str = str(user_msg)
+            if any(keyword in user_msg_str for keyword in keywords):
                 decision = "show_form"
                 reason = "user_indicated_completion"
 

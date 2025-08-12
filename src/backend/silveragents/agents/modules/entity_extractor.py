@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import Any
 
 from langchain.schema import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
@@ -54,17 +53,17 @@ class EntityExtractor:
 
                 # Process all entities and resolve references
                 resolved_entities = []
-                
+
                 if entity_data:  # Primary entity
                     resolved_entity = self.resolve_references(entity_data, session)
                     resolved_entities.append(resolved_entity)
-                    
+
                 # Process additional entities from the list
                 for additional_entity in entity_response.entities:
                     if additional_entity != entity_data:  # Avoid duplicating primary entity
                         resolved_entity = self.resolve_references(additional_entity, session)
                         resolved_entities.append(resolved_entity)
-                
+
                 if resolved_entities:
                     logger.info(f"Successfully extracted and resolved {len(resolved_entities)} entities")
                     _observe({
@@ -90,7 +89,6 @@ class EntityExtractor:
 
     @observe(name="resolve_references")
     def resolve_references(self, entity_data: EntityData, session: ChatSession) -> EntityData:
-        # Resolve asset type from session context if not provided
         if session.portfolio_state.current_asset_type and not entity_data.asset_type:
             entity_data.asset_type = session.portfolio_state.current_asset_type
 

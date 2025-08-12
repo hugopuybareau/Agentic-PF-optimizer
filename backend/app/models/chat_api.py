@@ -4,13 +4,11 @@ from .portfolio import Portfolio
 
 
 class ChatMessageRequest(BaseModel):
-    """Request model for chat API endpoint"""
     message: str
     session_id: str | None = None
 
 
 class ChatResponse(BaseModel):
-    """Response model for chat API endpoint"""
     message: str
     session_id: str
     ui_hints: dict | None = None
@@ -22,14 +20,12 @@ class ChatResponse(BaseModel):
 
 
 class PortfolioSubmission(BaseModel):
-    """Model for submitting a completed portfolio"""
     session_id: str
     portfolio: Portfolio
     analyze_immediately: bool = True
 
 
 class ChatConfirmation(BaseModel):
-    """Model for confirming chat actions"""
     session_id: str
     confirmation_id: str
     confirmed: bool

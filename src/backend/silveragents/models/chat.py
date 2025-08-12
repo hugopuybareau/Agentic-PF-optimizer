@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from .assets import Asset
+from .assets import Asset, AssetType
 
 
 class ChatMessage(BaseModel):
@@ -17,7 +17,7 @@ class PortfolioBuildingState(BaseModel):
     # Incrementally built portfolio
     assets: list[Asset] = []
     # Current asset being discussed
-    current_asset_type: str | None = None
+    current_asset_type: AssetType | None = None
     current_asset_data: dict[str, Any] = {}
     # Validation errors
     validation_errors: list[str] = []
@@ -27,7 +27,7 @@ class PortfolioBuildingState(BaseModel):
     next_questions: list[str] = []
 
 
-class ChatSession(BaseModel):  # manages the conversation history and portfolio building state
+class ChatSession(BaseModel):
     session_id: str
     user_id: str | None = None
     messages: list[ChatMessage] = []

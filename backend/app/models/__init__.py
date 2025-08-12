@@ -2,6 +2,7 @@ from .agent_state import AgentState, ChatAgentState
 from .analysis import AnalysisResult, NewsItem
 from .assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from .chat import ChatMessage, ChatSession, PortfolioBuildingState
+from .chat_api import ChatConfirmation, ChatMessageRequest, ChatResponse, PortfolioSubmission
 from .portfolio import Portfolio, PortfolioRequest
 from .portfolio_requests import (
     AddAssetRequest,
@@ -47,6 +48,11 @@ __all__ = [
     "ChatMessage",
     "ChatSession",
     "PortfolioBuildingState",
+    # Chat API
+    "ChatConfirmation",
+    "ChatMessageRequest", 
+    "ChatResponse",
+    "PortfolioSubmission",
     # Agent States
     "AgentState",
     "ChatAgentState",

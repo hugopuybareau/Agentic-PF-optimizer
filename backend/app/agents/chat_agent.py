@@ -1,5 +1,3 @@
-# backend/app/agents/chat_agent_v2.py
-
 import logging
 import os
 import uuid
@@ -154,15 +152,14 @@ class ChatAgent:
     @observe(name="extract_entities_node")
     def _extract_entities_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info(f"Extracting entities for intent: {state['intent']}")
-        entities = self.entity_extractor.extract_entities(
+        entities_list = self.entity_extractor.extract_entities(
             session=state["session"],
             user_message=state["user_message"],
             intent=state["intent"] or Intent.UNCLEAR
         )
-        # Handle context-aware references
-        result = self.entity_extractor.resolve_references(entities, state["session"])
-        state["entities"] = result
-        logger.info(f"Entities extracted: {list(result.keys()) if result else 'none'}")
+        # Store the list of EntityData directly
+        state["entities"] = entities_list
+        logger.info(f"Entities extracted: {len(entities_list)} entities")
         return state
 
     @observe(name="prepare_confirmation_node")
@@ -171,16 +168,25 @@ class ChatAgent:
         logger.info("Preparing portfolio action confirmation")
 
         intent = state["intent"]
-        entities = state["entities"]
+        entities_list = state["entities"]
         session = state["session"]
+
+        if not entities_list:
+            state["response"] = "I couldn't understand the asset details. Could you please clarify?"
+            return state
 
         # Create confirmation request
         confirmation_id = f"conf_{uuid.uuid4().hex[:8]}"
 
-        # Build asset confirmation
-        asset_conf = self._build_asset_confirmation(entities, intent)
+        # Build asset confirmations for all entities
+        asset_confirmations = []
+        for entity_data in entities_list:
+            entities_dict = entity_data.model_dump(exclude_none=True)
+            asset_conf = self._build_asset_confirmation(entities_dict, intent)
+            if asset_conf:
+                asset_confirmations.append(asset_conf)
 
-        if not asset_conf:
+        if not asset_confirmations:
             state["response"] = "I couldn't understand the asset details. Could you please clarify?"
             return state
 
@@ -193,12 +199,12 @@ class ChatAgent:
 
         action = action_map.get(intent, PortfolioAction.ADD_ASSET)
 
-        # Create confirmation request
+        # Create confirmation request for multiple assets
         confirmation_request = PortfolioConfirmationRequest(
             confirmation_id=confirmation_id,
             action=action,
-            assets=[asset_conf],
-            message=self._generate_confirmation_message(asset_conf, action),
+            assets=asset_confirmations,
+            message=self._generate_confirmation_message_for_multiple(asset_confirmations, action),
             requires_confirmation=True,
             metadata={
                 "session_id": session.session_id,
@@ -229,14 +235,32 @@ class ChatAgent:
         """Update the in-memory portfolio state (form preparation flow)."""
         logger.info(f"Updating in-memory portfolio based on intent: {state['intent']}")
         current_assets_count = len(state["session"].portfolio_state.assets)
+        
+        entities_list = state["entities"]
+        intent = state["intent"] or Intent.UNCLEAR
+        
+        # Process each entity individually
+        combined_ui_hints = {}
+        for entity_data in entities_list:
+            entities_dict = entity_data.model_dump(exclude_none=True)
+            result = self.portfolio_operations.update_portfolio(
+                session=state["session"],
+                entities=entities_dict,
+                intent=intent
+            )
+            # Combine UI hints from all operations
+            ui_hints = result.get("ui_hints", {})
+            for key, value in ui_hints.items():
+                if key in combined_ui_hints:
+                    # For boolean hints, use OR logic
+                    if isinstance(value, bool):
+                        combined_ui_hints[key] = combined_ui_hints[key] or value
+                    else:
+                        combined_ui_hints[key] = value
+                else:
+                    combined_ui_hints[key] = value
 
-        result = self.portfolio_operations.update_portfolio(
-            session=state["session"],
-            entities=state["entities"],
-            intent=state["intent"] or Intent.UNCLEAR
-        )
-
-        state["ui_hints"] = result.get("ui_hints", {})
+        state["ui_hints"] = combined_ui_hints
         new_assets_count = len(state["session"].portfolio_state.assets)
 
         if new_assets_count != current_assets_count:
@@ -259,11 +283,27 @@ class ChatAgent:
             state["ui_hints"]["confirmation_data"] = conf_req
         else:
             # Regular response generation
+            # Combine all entities into a single dict for response generation context
+            entities_list = state["entities"]
+            combined_entities = {}
+            if entities_list:
+                # If multiple entities, combine their info for context
+                asset_types = set()
+                for entity_data in entities_list:
+                    entity_dict = entity_data.model_dump(exclude_none=True)
+                    combined_entities.update(entity_dict)
+                    if entity_dict.get("asset_type"):
+                        asset_types.add(entity_dict["asset_type"])
+                # If multiple asset types, indicate this in the combined dict
+                if len(asset_types) > 1:
+                    combined_entities["multiple_assets"] = True
+                    combined_entities["asset_types"] = list(asset_types)
+            
             result = self.response_generator.generate_response(
                 session=state["session"],
                 user_message=state["user_message"],
                 intent=state["intent"] or Intent.UNCLEAR,
-                entities=state["entities"],
+                entities=combined_entities,
                 portfolio_state=state["session"].portfolio_state
             )
             state["response"] = result["response"]
@@ -290,7 +330,7 @@ class ChatAgent:
     def _build_asset_confirmation(self, entities: dict, intent: Intent) -> AssetConfirmation | None:
         """Build asset confirmation from extracted entities."""
         try:
-            asset_type = entities.get("type", "").lower()
+            asset_type = entities.get("asset_type", "").lower()
 
             if asset_type == "stock":
                 return AssetConfirmation(
@@ -359,7 +399,23 @@ class ChatAgent:
         else:
             return "Would you like to proceed with this portfolio change?"
 
-    @observe(name="process_message_v2")
+    def _generate_confirmation_message_for_multiple(self, assets: list[AssetConfirmation], action: PortfolioAction) -> str:
+        """Generate user-friendly confirmation message for multiple assets."""
+        if len(assets) == 1:
+            return self._generate_confirmation_message(assets[0], action)
+        
+        asset_list = ", ".join(asset.display_text for asset in assets)
+        
+        if action == PortfolioAction.ADD_ASSET:
+            return f"Would you like to add {asset_list} to your portfolio?"
+        elif action == PortfolioAction.REMOVE_ASSET:
+            return f"Would you like to remove {asset_list} from your portfolio?"
+        elif action == PortfolioAction.UPDATE_ASSET:
+            return f"Would you like to update {asset_list} in your portfolio?"
+        else:
+            return f"Would you like to proceed with changes to {asset_list}?"
+
+    @observe(name="process_message")
     def process_message(
         self,
         session_id: str,
@@ -371,7 +427,7 @@ class ChatAgent:
         logger.info(f"Processing message for session {session_id}: '{user_message[:50]}{'...' if len(user_message) > 50 else ''}'")
 
         trace = langfuse.trace(  # type: ignore
-            name="chat_conversation_v2",
+            name="chat_conversation",
             session_id=session_id,
             user_id=user_id,
             metadata={

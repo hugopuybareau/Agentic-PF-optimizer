@@ -1,7 +1,7 @@
 # Core
 uvicorn[standard]
 fastapi
-pydantic
+pydantic[email]
 requests
 
 # vDB
@@ -9,18 +9,14 @@ qdrant-client
 
 # AI
 langchain
-langchain-community
 langchain-openai
 langchain-huggingface
-langchain.tools
 langgraph
-sentence-transformers
 sqlalchemy
 python-jose
 psycopg2-binary
 passlib[bcrypt]
 bcrypt>=3.2,<4
-pydantic[email]
 redis
 pytest
 pytest-asyncio

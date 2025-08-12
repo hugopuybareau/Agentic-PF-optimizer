@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling>=1.5.0", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch]
+version = { source = "vcs", raw-options = { root = "../../" } }
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["silveragents"]
+only-packages = true
+
+[tool.hatch.build]
+source = "silveragents"
+
+[project]
+name = "silveragents"
+description = "AI Agents optimizing your financial portfolio."
+authors = [{ name = "silveragents", email = "hugo@silveragents.ai" }]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+]
+requires-python = ">=3.13,<3.14"
+dynamic = ["version"]
+
+dependencies = [
+    "fastapi==0.116.1",
+    "pydantic[email]==2.11.*",
+    "qdrant-client>=1.15.1,<1.16.0",
+    "langchain>=0.3.27,<0.4.0",
+    "langchain-openai>=0.3.30,<0.4.0",
+    "langchain-huggingface>=0.3.1,<0.4.0",
+    "langgraph>=0.6.4,<0.7.0",
+    "sqlalchemy>=2.0.43,<2.1.0",
+    "python-jose==3.5.*",
+    "psycopg2-binary==2.9.*",
+    "passlib[bcrypt]==1.7.*",
+    "bcrypt>=3.2.0,<4.0.0",
+    "redis==6.4.0",
+    "pydantic-settings==2.10.*",
+]
+
+[project.optional-dependencies]
+prod = ["uvicorn[standard]==0.35.*"]
+dev = ["pytest==8.4.*", "pytest-asyncio==1.1.*", "langfuse>=2.60.9,<3.0.0"]
+all = ["silveragents[prod]", "silveragents[dev]"]

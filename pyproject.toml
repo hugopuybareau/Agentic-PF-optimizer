@@ -1,25 +1,9 @@
-[tool.black]
-line-length = 100
-target-version = ["py311"]
-skip-string-normalization = true
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-select = [
-  "F",    # pyflakes (undefined names, unused imports, etc.)
-  "E",    # pycodestyle (whitespace/formatting)
-  "W",    # warnings
-  "I",    # isort (import sorting)
-  "B",    # flake8-bugbear (common bugs)
-  "UP",   # pyupgrade (modern syntax)
+[tool.uv.workspace]
+members = ["src/*"]
+exclude = [
+  "src/frontend",
+  "src/*.egg-info",
 ]
-ignore = ["E501"]  # Let Black handle line length
 
-[tool.ruff.format]
-docstring-code-format = true
-quote-style = "single"  # like Black's --skip-string-normalization
-
-[tool.ruff.lint.isort]
-force-single-line = false
-combine-as-imports = true
+[tool.uv.sources]
+silveragents = { workspace = true }

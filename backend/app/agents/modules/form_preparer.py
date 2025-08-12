@@ -4,7 +4,7 @@ from typing import Any
 from langfuse.decorators import langfuse_context, observe
 
 from ...models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
-from ..state.chat_state import ChatSession, PortfolioBuildingState
+from ...models import ChatSession, PortfolioBuildingState
 
 logger = logging.getLogger(__name__)
 

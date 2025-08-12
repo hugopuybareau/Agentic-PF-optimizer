@@ -1,3 +1,5 @@
+# backend/app/models/responses.py
+
 from enum import StrEnum
 from typing import Literal
 
@@ -14,8 +16,10 @@ class Intent(StrEnum):
     UNCLEAR = "unclear"
     GENERAL_QUESTION = "general_question"
 
+
 class IntentClassificationResponse(BaseModel):
     intent: Intent = Field(description="The classified intent from user message")
+
 
 class EntityData(BaseModel):
     ticker: str | None = Field(None, description="Stock ticker symbol if mentioned")

@@ -32,6 +32,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Databases**: PostgreSQL (user data, portfolios), Qdrant vector database (news/analysis storage), Redis (chat session storage)
 - **Agent System**: Two LangGraph workflows - chat flow for portfolio building and analysis flow for market insights
 
+### Data Models (backend/app/models/)
+- **Centralized Model Architecture**: All Pydantic models consolidated in `/models/` folder
+- **Core Models**:
+  - `assets.py`: Asset types (Stock, Crypto, RealEstate, Mortgage, Cash)
+  - `portfolio.py`: Portfolio and PortfolioRequest models
+  - `chat.py`: ChatMessage, ChatSession, PortfolioBuildingState for conversational workflows
+  - `agent_state.py`: ChatAgentState, AgentState for LangGraph workflow states
+  - `analysis.py`: AnalysisResult, NewsItem for portfolio analysis
+  - `responses.py`: All LLM response models (Intent, EntityData, UIHints, etc.)
+- **Clean Imports**: All models accessible via `from app.models import ModelName`
+
 ### Chat Agent System (backend/app/agents/)
 - **ChatAgent** (`chat_agent.py`): Conversational agent for building portfolios through natural language
   - Uses Azure OpenAI GPT-4o-mini for intent classification and entity extraction
@@ -40,13 +51,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Session Management** (`session_storage.py`): Redis-backed session storage with in-memory fallback
   - Supports Redis for production, hybrid mode for development
   - TTL-based session expiration and cleanup
-- **State Models** (`state/chat_state.py`): Pydantic models for chat sessions and portfolio building state
+- **Modular Architecture**: Separate modules for intent classification, entity extraction, response generation
 
 ### Portfolio Analysis Agent
 - **PortfolioAgent** (`portfolio_agent.py`): LangGraph workflow for portfolio analysis and market insights
-- **State Management** (`state/agent.py`, `state/analysis.py`): Defines analysis workflow state
 - **Tools** (`tools.py`): NewsSearchTool, ClassificationTool, AnalysisTool, PortfolioSummarizerTool
-- **Vector Store** (`vector_store.py`): Qdrant integration for semantic search and news storage
+- **Vector Store** (`core/vector_store.py`): Qdrant integration for semantic search and news storage
 
 ### API Structure
 - **Chat System**: `/api/chat/*` 
@@ -116,11 +126,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Internationalization**: Ensure all new UI text uses i18next translation keys instead of hardcoded strings
 - **Feature Integration**: For significant new features, update this CLAUDE.md file to document the integration
 
+### Model Architecture
+- **Centralized Models**: All data models located in `backend/app/models/` for single source of truth
+- **Domain Separation**: Models organized by domain (assets, chat, analysis, responses) not by location
+- **Clean Imports**: Use `from app.models import Model` instead of deep imports
+- **Type Consistency**: All agent methods use proper Pydantic models and enum types (e.g., `Intent` enum not strings)
+
 ### Agent Development
 - Both agents use LangGraph StateGraph for workflow orchestration
 - State classes use TypedDict for type safety and Pydantic for validation
 - Tools are modular and can be easily extended or replaced
 - Error handling with graceful fallbacks and user-friendly messages
+- **Structured Output**: All LLM calls use Pydantic models with proper schemas for OpenAI compatibility
+- **Type Safety**: Methods return proper types (Intent enum) not mixed string/enum types
 
 ### Session Management
 - Use `get_session_storage()` factory for environment-appropriate storage

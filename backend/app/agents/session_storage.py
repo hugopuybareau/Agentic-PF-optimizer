@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from .state.chat_state import ChatSession
+from ..models import ChatSession
 
 logger = logging.getLogger(__name__)
 

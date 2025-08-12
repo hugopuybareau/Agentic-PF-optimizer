@@ -1,11 +1,11 @@
-# backend/app/agent/chat_state.py
+# backend/app/models/chat.py
 
 from datetime import datetime
 from typing import Annotated, Any, TypedDict
 
 from pydantic import BaseModel
 
-from ...models.assets import Asset
+from .assets import Asset
 
 
 class ChatMessage(BaseModel):
@@ -29,7 +29,7 @@ class PortfolioBuildingState(BaseModel):
     next_questions: list[str] = []
 
 
-class ChatSession(BaseModel): # manages the conversation history and portfolio building state
+class ChatSession(BaseModel):  # manages the conversation history and portfolio building state
     session_id: str
     user_id: str | None = None
     messages: list[ChatMessage] = []
@@ -45,26 +45,3 @@ class ChatSession(BaseModel): # manages the conversation history and portfolio b
             metadata=metadata or {}
         ))
         self.last_activity = datetime.now()
-
-
-class ChatAgentState(TypedDict):
-    # Current session
-    session: ChatSession
-    # Last user message
-    user_message: str
-    # Current step in the flow
-    current_step: str
-    # Intent classification
-    intent: str | None
-    # Extracted entities
-    entities: dict[str, Any]
-    # Response to send
-    response: str
-    # UI hints for frontend
-    ui_hints: dict[str, Any]
-    # Whether to show form
-    show_form: bool
-    # Form data if applicable
-    form_data: dict[str, Any] | None
-    # Errors
-    errors: Annotated[list[str], lambda x, y: x + y]

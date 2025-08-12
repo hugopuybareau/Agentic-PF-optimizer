@@ -6,8 +6,7 @@ from langfuse.decorators import langfuse_context, observe
 from pydantic import ValidationError
 
 from ...config.prompts import prompt_manager
-from ..response_models import Intent, IntentClassificationResponse
-from ..state.chat_state import ChatSession
+from ...models import ChatSession, Intent, IntentClassificationResponse
 
 logger = logging.getLogger(__name__)
 

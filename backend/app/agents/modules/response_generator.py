@@ -9,8 +9,7 @@ from pydantic import ValidationError
 
 from ...config.prompts import prompt_manager
 from ...models.assets import Asset, Cash, Crypto, Stock
-from ..response_models import Intent, ResponseGenerationResponse, UIHints
-from ..state.chat_state import ChatSession, PortfolioBuildingState
+from ...models import ChatSession, Intent, PortfolioBuildingState, ResponseGenerationResponse, UIHints
 
 logger = logging.getLogger(__name__)
 

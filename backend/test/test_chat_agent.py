@@ -1,7 +1,7 @@
 # backend/test/test_chat_agent.py
 
 from backend.app.agents.chat_agent import ChatAgent
-from backend.app.agents.state.chat_state import ChatSession
+from backend.app.models import ChatSession
 
 
 def test_intent_classification():

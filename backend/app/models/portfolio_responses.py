@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from .assets import AssetType
+
 
 class PortfolioAction(StrEnum):
     ADD_ASSET = "add_asset"
@@ -16,7 +18,7 @@ class PortfolioAction(StrEnum):
 
 class AssetConfirmation(BaseModel):
     """Asset details for confirmation."""
-    type: Literal["stock", "crypto", "real_estate", "mortgage", "cash"]
+    type: AssetType
     symbol: str | None = Field(None, description="Ticker/Symbol for stocks/crypto")
     name: str | None = Field(None, description="Human-readable name")
     quantity: float = Field(description="Amount/shares to add/remove")

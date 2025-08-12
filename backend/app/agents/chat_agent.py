@@ -2,7 +2,9 @@ import logging
 import os
 import uuid
 from datetime import datetime
+from uuid import UUID
 
+from langchain.schema import HumanMessage
 from langchain_openai import AzureChatOpenAI
 from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
@@ -11,20 +13,27 @@ from langgraph.graph import END, StateGraph
 from pydantic import SecretStr
 from sqlalchemy.orm import Session
 
-from ..models import ChatAgentState, ChatSession, Intent
-from ..models.portfolio import Portfolio
-from ..models.portfolio_responses import (
+from ..models import (
     AssetConfirmation,
+    AssetType,
+    ChatAgentState,
+    ChatResponse,
+    ChatSession,
+    ConfirmActionRequest,
+    Intent,
+    Portfolio,
     PortfolioAction,
     PortfolioConfirmationRequest,
 )
-from .modules.entity_extractor import EntityExtractor
-from .modules.form_preparer import FormPreparer
-from .modules.intent_classifier import IntentClassifier
-from .modules.portfolio_operations import PortfolioOperations
-from .modules.response_generator import ResponseGenerator
-from .modules.workflow_utils import WorkflowUtils
-from .services.portfolio_service import PortfolioService
+from .modules import (
+    EntityExtractor,
+    FormPreparer,
+    IntentClassifier,
+    PortfolioOperations,
+    ResponseGenerator,
+    WorkflowUtils,
+)
+from .services import PortfolioService
 from .session_storage import get_session_storage
 
 logger = logging.getLogger(__name__)
@@ -111,34 +120,30 @@ class ChatAgent:
         workflow.add_edge("prepare_form", END)
 
         logger.info("Enhanced chat agent workflow graph compiled successfully")
-        return workflow.compile()  # type: ignore
+        return workflow.compile() # type: ignore
 
-    # Conditional routing functions
     def _should_prepare_confirmation(self, state: ChatAgentState) -> str:
-        """Determine if confirmation is needed for the action."""
-        intent = state.get("intent")
-        entities = state.get("entities", {})
+        intent = state.intent
+        entities = state.entities
 
-        # Portfolio modification intents need confirmation
         if intent in [Intent.ADD_ASSET, Intent.REMOVE_ASSET, Intent.MODIFY_ASSET]:
-            if entities:  # Only if we extracted valid entities
+            if entities:
                 return "prepare_confirmation"
             else:
-                return "generate_response"  # Ask for more info
+                return "generate_response"
         elif intent == Intent.COMPLETE_PORTFOLIO:
-            return "update_portfolio"  # Direct to portfolio update
+            return "update_portfolio"
         else:
-            return "generate_response"  # Other intents
+            return "generate_response"
 
     # Node implementations
     @observe(name="classify_intent_node")
     def _classify_intent_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info("Classifying user intent from message")
         result = self.intent_classifier.classify_intent(
-            session=state["session"],
-            user_message=state["user_message"]
+            session=state.session,
+            user_message=state.user_message
         )
-        state["intent"] = result
         logger.info(f"Intent classified as: {result}")
 
         try:
@@ -147,38 +152,35 @@ class ChatAgent:
             )
         except Exception as e:
             logger.error(f"Failed to update Langfuse metadata: {e}")
-        return state
+
+        return state.model_copy(update={"intent": result})
 
     @observe(name="extract_entities_node")
     def _extract_entities_node(self, state: ChatAgentState) -> ChatAgentState:
-        logger.info(f"Extracting entities for intent: {state['intent']}")
+        logger.info(f"Extracting entities for intent: {state.intent}")
         entities_list = self.entity_extractor.extract_entities(
-            session=state["session"],
-            user_message=state["user_message"],
-            intent=state["intent"] or Intent.UNCLEAR
+            session=state.session,
+            user_message=state.user_message,
+            intent=state.intent or Intent.UNCLEAR
         )
-        # Store the list of EntityData directly
-        state["entities"] = entities_list
         logger.info(f"Entities extracted: {len(entities_list)} entities")
-        return state
+        return state.model_copy(update={"entities": entities_list})
 
     @observe(name="prepare_confirmation_node")
     def _prepare_confirmation_node(self, state: ChatAgentState) -> ChatAgentState:
-        """Prepare confirmation request for portfolio changes."""
         logger.info("Preparing portfolio action confirmation")
 
-        intent = state["intent"]
-        entities_list = state["entities"]
-        session = state["session"]
+        intent = state.intent
+        entities_list = state.entities
+        session = state.session
 
         if not entities_list:
-            state["response"] = "I couldn't understand the asset details. Could you please clarify?"
-            return state
+            return state.model_copy(update={
+                "response": "I couldn't understand the asset details. Could you please clarify?"
+            })
 
-        # Create confirmation request
         confirmation_id = f"conf_{uuid.uuid4().hex[:8]}"
 
-        # Build asset confirmations for all entities
         asset_confirmations = []
         for entity_data in entities_list:
             entities_dict = entity_data.model_dump(exclude_none=True)
@@ -187,10 +189,10 @@ class ChatAgent:
                 asset_confirmations.append(asset_conf)
 
         if not asset_confirmations:
-            state["response"] = "I couldn't understand the asset details. Could you please clarify?"
-            return state
+            return state.model_copy(update={
+                "response": "I couldn't understand the asset details. Could you please clarify?"
+            })
 
-        # Map intent to action
         action_map = {
             Intent.ADD_ASSET: PortfolioAction.ADD_ASSET,
             Intent.REMOVE_ASSET: PortfolioAction.REMOVE_ASSET,
@@ -199,7 +201,6 @@ class ChatAgent:
 
         action = action_map.get(intent, PortfolioAction.ADD_ASSET)
 
-        # Create confirmation request for multiple assets
         confirmation_request = PortfolioConfirmationRequest(
             confirmation_id=confirmation_id,
             action=action,
@@ -209,50 +210,49 @@ class ChatAgent:
             metadata={
                 "session_id": session.session_id,
                 "user_id": session.user_id,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now().isoformat()
             }
         )
 
-        # Store pending confirmation
         self.pending_confirmations[confirmation_id] = {
             "request": confirmation_request,
             "session_id": session.session_id,
-            "entities": entities,
+            "entities": entities_list,
             "intent": intent
         }
 
-        # Add to state for response generation
-        state["confirmation_request"] = confirmation_request.model_dump()
-        state["ui_hints"]["confirmation_pending"] = True
-        state["ui_hints"]["confirmation_id"] = confirmation_id
-
         logger.info(f"Confirmation prepared: {confirmation_id} for {action}")
 
-        return state
+        updated_ui_hints = state.ui_hints.copy()
+        updated_ui_hints.update({
+            "confirmation_pending": True,
+            "confirmation_id": confirmation_id
+        })
+
+        return state.model_copy(update={
+            "confirmation_request": confirmation_request.model_dump(),
+            "ui_hints": updated_ui_hints
+        })
 
     @observe(name="update_portfolio_node")
     def _update_portfolio_node(self, state: ChatAgentState) -> ChatAgentState:
-        """Update the in-memory portfolio state (form preparation flow)."""
-        logger.info(f"Updating in-memory portfolio based on intent: {state['intent']}")
-        current_assets_count = len(state["session"].portfolio_state.assets)
-        
-        entities_list = state["entities"]
-        intent = state["intent"] or Intent.UNCLEAR
-        
-        # Process each entity individually
+        logger.info(f"Updating in-memory portfolio based on intent: {state.intent}")
+        current_assets_count = len(state.session.portfolio_state.assets)
+
+        entities_list = state.entities
+        intent = state.intent or Intent.UNCLEAR
+
         combined_ui_hints = {}
         for entity_data in entities_list:
             entities_dict = entity_data.model_dump(exclude_none=True)
             result = self.portfolio_operations.update_portfolio(
-                session=state["session"],
+                session=state.session,
                 entities=entities_dict,
                 intent=intent
             )
-            # Combine UI hints from all operations
             ui_hints = result.get("ui_hints", {})
             for key, value in ui_hints.items():
                 if key in combined_ui_hints:
-                    # For boolean hints, use OR logic
                     if isinstance(value, bool):
                         combined_ui_hints[key] = combined_ui_hints[key] or value
                     else:
@@ -260,115 +260,139 @@ class ChatAgent:
                 else:
                     combined_ui_hints[key] = value
 
-        state["ui_hints"] = combined_ui_hints
-        new_assets_count = len(state["session"].portfolio_state.assets)
+        new_assets_count = len(state.session.portfolio_state.assets)
 
         if new_assets_count != current_assets_count:
             logger.info(f"In-memory portfolio updated: {current_assets_count} → {new_assets_count} assets")
         else:
             logger.info("Portfolio state unchanged")
 
-        return state
+        return state.model_copy(update={"ui_hints": combined_ui_hints})
 
     @observe(name="generate_response_node")
     def _generate_response_node(self, state: ChatAgentState) -> ChatAgentState:
-        """Generate response with confirmation request if needed."""
         logger.info("Generating response to user")
 
-        # Check if we have a confirmation request
-        if state.get("confirmation_request"):
-            conf_req = state["confirmation_request"]
-            state["response"] = conf_req["message"]
-            state["ui_hints"]["show_confirmation"] = True
-            state["ui_hints"]["confirmation_data"] = conf_req
+        if hasattr(state, 'confirmation_request') and state.confirmation_request:
+            if "confirmation_data" in state.ui_hints:
+                conf_req = state.ui_hints["confirmation_data"]
+                updated_ui_hints = state.ui_hints.copy()
+                updated_ui_hints.update({
+                    "show_confirmation": True,
+                    "confirmation_data": conf_req
+                })
+                return state.model_copy(update={
+                    "response": conf_req["message"],
+                    "ui_hints": updated_ui_hints
+                })
+            else:
+                return state.model_copy(update={"response": "Please confirm the action."})
         else:
-            # Regular response generation
-            # Combine all entities into a single dict for response generation context
-            entities_list = state["entities"]
+            entities_list = state.entities
             combined_entities = {}
             if entities_list:
-                # If multiple entities, combine their info for context
                 asset_types = set()
                 for entity_data in entities_list:
                     entity_dict = entity_data.model_dump(exclude_none=True)
                     combined_entities.update(entity_dict)
                     if entity_dict.get("asset_type"):
                         asset_types.add(entity_dict["asset_type"])
-                # If multiple asset types, indicate this in the combined dict
                 if len(asset_types) > 1:
                     combined_entities["multiple_assets"] = True
                     combined_entities["asset_types"] = list(asset_types)
-            
-            result = self.response_generator.generate_response(
-                session=state["session"],
-                user_message=state["user_message"],
-                intent=state["intent"] or Intent.UNCLEAR,
-                entities=combined_entities,
-                portfolio_state=state["session"].portfolio_state
-            )
-            state["response"] = result["response"]
-            state["ui_hints"].update(result["ui_hints"])
 
-        logger.info(f"Response generated ({len(state['response'])} characters)")
-        return state
+            result = self.response_generator.generate_response(
+                session=state.session,
+                user_message=state.user_message,
+                intent=state.intent or Intent.UNCLEAR,
+                entities=combined_entities,
+                portfolio_state=state.session.portfolio_state
+            )
+
+            logger.info(f"Response generated ({len(result['response'])} characters)")
+            updated_ui_hints = state.ui_hints.copy()
+            updated_ui_hints.update(result["ui_hints"])
+
+            return state.model_copy(update={
+                "response": result["response"],
+                "ui_hints": updated_ui_hints
+            })
 
     @observe(name="prepare_form_node")
     def _prepare_form_node(self, state: ChatAgentState) -> ChatAgentState:
-        """Prepare portfolio form for user review."""
         logger.info("Preparing portfolio form for user review")
         result = self.form_preparer.prepare_form(
-            session=state["session"],
-            portfolio_state=state["session"].portfolio_state
+            session=state.session,
+            portfolio_state=state.session.portfolio_state
         )
-        state["show_form"] = result.get("show_form", False)
-        state["form_data"] = result.get("form_data")
-        state["response"] = result.get("response", "")
-        state["ui_hints"] = result.get("ui_hints", {})
         logger.info(f"Form prepared with {len(result.get('form_data', {}).get('assets', []))} assets")
-        return state
+        return state.model_copy(update={
+            "show_form": result.get("show_form", False),
+            "form_data": result.get("form_data"),
+            "response": result.get("response", ""),
+            "ui_hints": result.get("ui_hints", {})
+        })
 
     def _build_asset_confirmation(self, entities: dict, intent: Intent) -> AssetConfirmation | None:
-        """Build asset confirmation from extracted entities."""
         try:
-            asset_type = entities.get("asset_type", "").lower()
-
-            if asset_type == "stock":
+            asset_type_raw = entities.get("asset_type")
+            if not asset_type_raw:
+                return None
+            
+            # Normalize asset type to match AssetType literal
+            asset_type: AssetType
+            if asset_type_raw.lower() == "stock":
+                asset_type = "stock"
                 return AssetConfirmation(
-                    type="stock",
+                    type=asset_type,
                     symbol=entities.get("ticker"),
+                    name=entities.get("ticker"),
                     quantity=float(entities.get("shares", 0)),
+                    current_quantity=0.0,
                     action=self._intent_to_action(intent),
                     display_text=f"{entities.get('shares')} shares of {entities.get('ticker')}"
                 )
-            elif asset_type in ["crypto", "cryptocurrency"]:
+            elif asset_type_raw.lower() in ["crypto", "cryptocurrency"]:
+                asset_type = "crypto"
                 return AssetConfirmation(
-                    type="crypto",
+                    type=asset_type,
                     symbol=entities.get("symbol"),
+                    name=entities.get("symbol"),
                     quantity=float(entities.get("amount", 0)),
+                    current_quantity=0.0,
                     action=self._intent_to_action(intent),
                     display_text=f"{entities.get('amount')} {entities.get('symbol')}"
                 )
-            elif asset_type in ["real_estate", "realestate", "property"]:
+            elif asset_type_raw.lower() in ["real_estate", "realestate", "property"]:
+                asset_type = "real_estate"
                 return AssetConfirmation(
-                    type="real_estate",
+                    type=asset_type,
                     symbol=entities.get("address"),
+                    name=f"Property at {entities.get('address')}",
                     quantity=float(entities.get("value") or entities.get("market_value", 0)),
+                    current_quantity=0.0,
                     action=self._intent_to_action(intent),
                     display_text=f"Property at {entities.get('address')} (${entities.get('value', 0):,.0f})"
                 )
-            elif asset_type == "mortgage":
+            elif asset_type_raw.lower() == "mortgage":
+                asset_type = "mortgage"
                 return AssetConfirmation(
-                    type="mortgage",
+                    type=asset_type,
                     symbol=entities.get("lender"),
+                    name=f"Mortgage from {entities.get('lender')}",
                     quantity=float(entities.get("balance", 0)),
+                    current_quantity=0.0,
                     action=self._intent_to_action(intent),
                     display_text=f"Mortgage from {entities.get('lender')} (${entities.get('balance', 0):,.0f})"
                 )
-            elif asset_type == "cash":
+            elif asset_type_raw.lower() == "cash":
+                asset_type = "cash"
                 return AssetConfirmation(
-                    type="cash",
+                    type=asset_type,
                     symbol=entities.get("currency", "USD"),
+                    name=f"Cash in {entities.get('currency', 'USD')}",
                     quantity=float(entities.get("amount", 0)),
+                    current_quantity=0.0,
                     action=self._intent_to_action(intent),
                     display_text=f"${entities.get('amount', 0):,.2f} {entities.get('currency', 'USD')}"
                 )
@@ -380,7 +404,6 @@ class ChatAgent:
             return None
 
     def _intent_to_action(self, intent: Intent) -> PortfolioAction:
-        """Convert intent to portfolio action."""
         mapping = {
             Intent.ADD_ASSET: PortfolioAction.ADD_ASSET,
             Intent.REMOVE_ASSET: PortfolioAction.REMOVE_ASSET,
@@ -389,7 +412,6 @@ class ChatAgent:
         return mapping.get(intent, PortfolioAction.ADD_ASSET)
 
     def _generate_confirmation_message(self, asset: AssetConfirmation, action: PortfolioAction) -> str:
-        """Generate user-friendly confirmation message."""
         if action == PortfolioAction.ADD_ASSET:
             return f"Would you like to add {asset.display_text} to your portfolio?"
         elif action == PortfolioAction.REMOVE_ASSET:
@@ -400,12 +422,11 @@ class ChatAgent:
             return "Would you like to proceed with this portfolio change?"
 
     def _generate_confirmation_message_for_multiple(self, assets: list[AssetConfirmation], action: PortfolioAction) -> str:
-        """Generate user-friendly confirmation message for multiple assets."""
         if len(assets) == 1:
             return self._generate_confirmation_message(assets[0], action)
-        
+
         asset_list = ", ".join(asset.display_text for asset in assets)
-        
+
         if action == PortfolioAction.ADD_ASSET:
             return f"Would you like to add {asset_list} to your portfolio?"
         elif action == PortfolioAction.REMOVE_ASSET:
@@ -421,12 +442,11 @@ class ChatAgent:
         session_id: str,
         user_message: str,
         user_id: str | None = None,
-        db: Session | None = None
+        _db: Session | None = None
     ) -> dict:
-        """Process message with portfolio persistence support."""
-        logger.info(f"Processing message for session {session_id}: '{user_message[:50]}{'...' if len(user_message) > 50 else ''}'")
+        logger.info(f"Processing message for session {session_id}: '{user_message[:5]}{'...' if len(user_message) > 5 else ''}'")
 
-        trace = langfuse.trace(  # type: ignore
+        trace = langfuse.trace(
             name="chat_conversation",
             session_id=session_id,
             user_id=user_id,
@@ -450,18 +470,19 @@ class ChatAgent:
 
         session.add_message("user", user_message)
 
-        initial_state: ChatAgentState = {
-            "session": session,
-            "user_message": user_message,
-            "current_step": "start",
-            "intent": None,
-            "entities": {},
-            "response": "",
-            "ui_hints": {},
-            "show_form": False,
-            "form_data": None,
-            "errors": []
-        }
+        initial_state = ChatAgentState(
+            session=session,
+            user_message=HumanMessage(content=user_message),
+            current_step="start",
+            intent=Intent.UNCLEAR,
+            entities=[],
+            response=ChatResponse(message="", session_id=session_id),
+            ui_hints={},
+            confirmation_request=ConfirmActionRequest(confirmation_id="temp", confirmed=False),
+            show_form=False,
+            form_data=None,
+            errors=[]
+        )
 
         try:
             langfuse_context.update_current_observation(
@@ -474,54 +495,51 @@ class ChatAgent:
             )
 
             logger.info("Invoking chat workflow graph")
-            result = self.graph.invoke(initial_state)  # type: ignore
+            result = self.graph.invoke(initial_state) # type: ignore
 
-            # Prepare response with confirmation if needed
             response_metadata = {
-                "ui_hints": result.get("ui_hints", {}),
-                "show_form": result.get("show_form", False)
+                "ui_hints": result.ui_hints,
+                "show_form": result.show_form
             }
 
-            # Add confirmation request to metadata if present
-            if result.get("confirmation_request"):
-                response_metadata["confirmation_request"] = result["confirmation_request"]
+            if result.confirmation_request:
+                response_metadata["confirmation_request"] = result.confirmation_request.model_dump()
 
-            session.add_message("assistant", result["response"], response_metadata)
+            session.add_message("assistant", result.response, response_metadata)
             self.session_storage.set(session_id, session)
 
             response = {
-                "message": result["response"],
+                "message": result.response,
                 "session_id": session_id,
-                "ui_hints": result.get("ui_hints", {}),
-                "show_form": result.get("show_form", False),
-                "form_data": result.get("form_data"),
+                "ui_hints": result.ui_hints,
+                "show_form": result.show_form,
+                "form_data": result.form_data,
                 "portfolio_summary": {
                     "assets": len(session.portfolio_state.assets),
                     "is_complete": session.portfolio_state.is_complete
                 }
             }
 
-            # Add confirmation request to response if present
-            if result.get("confirmation_request"):
-                response["confirmation_request"] = result["confirmation_request"]
+            if result.confirmation_request:
+                response["confirmation_request"] = result.confirmation_request.model_dump()
                 response["requires_confirmation"] = True
 
-            if result.get("errors"):
-                response["errors"] = result["errors"]
+            if result.errors:
+                response["errors"] = result.errors
 
             trace.update(
                 output=response,
                 metadata={
                     "success": True,
                     "asset_count": len(session.portfolio_state.assets),
-                    "show_form": result.get("show_form", False),
-                    "intent": result.get("intent"),
-                    "entities_extracted": bool(result.get("entities")),
-                    "confirmation_pending": bool(result.get("confirmation_request"))
+                    "show_form": result.show_form,
+                    "intent": result.intent,
+                    "entities_extracted": bool(result.entities),
+                    "confirmation_pending": bool(result.confirmation_request)
                 }
             )
 
-            logger.info(f"Message processed - Assets: {len(session.portfolio_state.assets)}, Confirmation: {bool(result.get('confirmation_request'))}")
+            logger.info(f"Message processed - Assets: {len(session.portfolio_state.assets)}, Confirmation: {bool(result.confirmation_request)}")
             return response
 
         except Exception as e:
@@ -546,11 +564,9 @@ class ChatAgent:
         user_id: str,
         db: Session
     ) -> dict:
-        """Process confirmation response and update database if confirmed."""
         logger.info(f"Processing confirmation {confirmation_id}: confirmed={confirmed}")
 
         try:
-            # Get pending confirmation
             pending = self.pending_confirmations.get(confirmation_id)
             if not pending:
                 logger.warning(f"Confirmation {confirmation_id} not found")
@@ -573,7 +589,6 @@ class ChatAgent:
             # Process the confirmed action
             request = pending["request"]
             entities = pending["entities"]
-            intent = pending["intent"]
 
             # Initialize portfolio service
             portfolio_service = PortfolioService(db)
@@ -623,10 +638,8 @@ class ChatAgent:
         action: PortfolioAction,
         entities: dict
     ) -> dict:
-        """Execute the portfolio action in the database."""
 
         try:
-            # Create asset from entities
             asset = self.portfolio_operations._create_asset_from_entities(entities)
 
             if not asset:
@@ -667,7 +680,6 @@ class ChatAgent:
             }
 
     def get_session_portfolio(self, session_id: str) -> Portfolio | None:
-        """Get the in-memory portfolio for a session."""
         logger.debug(f"Retrieving portfolio for session: {session_id}")
         session = self.session_storage.get(session_id)
         if not session:
@@ -681,7 +693,6 @@ class ChatAgent:
         return None
 
     def clear_session(self, session_id: str):
-        """Clear a chat session."""
         logger.info(f"Clearing session: {session_id}")
         self.session_storage.delete(session_id)
         logger.info(f"Session cleared: {session_id}")

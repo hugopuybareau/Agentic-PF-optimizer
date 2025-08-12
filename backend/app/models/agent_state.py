@@ -1,29 +1,35 @@
-# backend/app/models/agent_state.py
-
 import operator
 from typing import Annotated, Any, TypedDict
 
-from .assets import Asset
-from .portfolio import Portfolio
+from langchain.schema import HumanMessage
+
+from backend.app.models.portfolio_requests import ConfirmActionRequest
+from backend.app.models.responses import EntityExtractionResponse, Intent
+from backend.app.routers.chat import ChatResponse
+
 from .analysis import AnalysisResult, NewsItem
+from .assets import Asset
 from .chat import ChatSession
+from .portfolio import Portfolio
 
 
 class ChatAgentState(TypedDict):
     # Current session
     session: ChatSession
     # Last user message
-    user_message: str
+    user_message: HumanMessage
     # Current step in the flow
     current_step: str
     # Intent classification
-    intent: str | None
+    intent: Intent
     # Extracted entities
-    entities: dict[str, Any]
+    entities: EntityExtractionResponse
     # Response to send
-    response: str
+    response: ChatResponse
     # UI hints for frontend
     ui_hints: dict[str, Any]
+    # Pending confirmations
+    confirmation_request: ConfirmActionRequest
     # Whether to show form
     show_form: bool
     # Form data if applicable

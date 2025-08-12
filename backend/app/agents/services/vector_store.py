@@ -24,7 +24,7 @@ from ..utils import clean_value
 
 logger = logging.getLogger(__name__)
 
-class VectorStore:
+class VectorStoreService:
     def __init__(self):
         self.qdrant_host = os.getenv('QDRANT_HOST', 'localhost')
         self.qdrant_port = int(os.getenv('QDRANT_PORT', '6333'))

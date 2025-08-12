@@ -1,5 +1,3 @@
-# backend/app/models/assets.py
-
 from typing import Literal
 
 from pydantic import BaseModel, Field

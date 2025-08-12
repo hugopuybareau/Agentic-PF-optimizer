@@ -3,6 +3,23 @@ from .analysis import AnalysisResult, NewsItem
 from .assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from .chat import ChatMessage, ChatSession, PortfolioBuildingState
 from .portfolio import Portfolio, PortfolioRequest
+from .portfolio_requests import (
+    AddAssetRequest,
+    ConfirmActionRequest,
+    RemoveAssetRequest,
+    UpdateAssetRequest,
+)
+from .portfolio_responses import (
+    AssetConfirmation,
+    ChatPortfolioUpdate,
+    PortfolioAction,
+    PortfolioActionResult,
+    PortfolioConfirmationRequest,
+    PortfolioConfirmationResponse,
+    PortfolioEvent,
+    PortfolioEventType,
+    PortfolioSnapshot,
+)
 from .responses import (
     AssetAnalysisResponse,
     EntityData,
@@ -46,4 +63,19 @@ __all__ = [
     "PortfolioDigestResponse",
     "ResponseGenerationResponse",
     "UIHints",
+    # Portfolio Responses
+    "AssetConfirmation",
+    "ChatPortfolioUpdate",
+    "PortfolioAction",
+    "PortfolioActionResult",
+    "PortfolioConfirmationRequest",
+    "PortfolioConfirmationResponse",
+    "PortfolioEvent",
+    "PortfolioEventType",
+    "PortfolioSnapshot",
+    # Portfolio Requests
+    "AddAssetRequest",
+    "ConfirmActionRequest",
+    "RemoveAssetRequest",
+    "UpdateAssetRequest",
 ]

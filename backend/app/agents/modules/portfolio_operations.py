@@ -4,6 +4,7 @@ from typing import Any
 from langfuse.decorators import langfuse_context, observe
 
 from ...models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
+from ..response_models import Intent
 from ..state.chat_state import ChatSession
 
 logger = logging.getLogger(__name__)
@@ -12,10 +13,10 @@ logger = logging.getLogger(__name__)
 class PortfolioOperations:
 
     @observe(name="update_portfolio_tool")
-    def update_portfolio(self, session: ChatSession, entities: dict[str, Any], intent: str) -> dict[str, Any]:
+    def update_portfolio(self, session: ChatSession, entities: dict[str, Any], intent: Intent) -> dict[str, Any]:
         ui_hints = {}
 
-        if intent == "add_asset" and entities:
+        if intent == Intent.ADD_ASSET and entities:
             try:
                 asset = self._create_asset_from_entities(entities)
                 if asset:
@@ -41,7 +42,7 @@ class PortfolioOperations:
                 logger.error(f"Failed to create asset: {e}")
                 session.portfolio_state.validation_errors.append(str(e))
 
-        elif intent == "remove_asset" and entities:
+        elif intent == Intent.REMOVE_ASSET and entities:
             identifier = entities.get("ticker") or entities.get("symbol") or entities.get("address")
             if identifier:
                 original_count = len(session.portfolio_state.assets)
@@ -53,7 +54,7 @@ class PortfolioOperations:
                     ui_hints["removed_asset"] = True
                     logger.info(f"Removed asset with identifier: {identifier}")
 
-        elif intent == "complete_portfolio":
+        elif intent == Intent.COMPLETE_PORTFOLIO:
             session.portfolio_state.is_complete = True
             ui_hints["portfolio_complete"] = True
 

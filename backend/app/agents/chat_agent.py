@@ -1,5 +1,3 @@
-# backend/app/agents/chat_agent.py
-
 import logging
 import os
 from datetime import datetime
@@ -15,6 +13,7 @@ from ..models.portfolio import Portfolio
 from .modules.entity_extractor import EntityExtractor
 from .modules.form_preparer import FormPreparer
 from .modules.intent_classifier import IntentClassifier
+from .response_models import Intent
 from .modules.portfolio_operations import PortfolioOperations
 from .modules.response_generator import ResponseGenerator
 from .modules.workflow_utils import WorkflowUtils
@@ -113,7 +112,7 @@ class ChatAgent:
         entities = self.entity_extractor.extract_entities(
             session=state["session"],
             user_message=state["user_message"],
-            intent=state["intent"] or "unclear"
+            intent=state["intent"] or Intent.UNCLEAR
         )
         # Handle context-aware references
         result = self.entity_extractor.resolve_references(entities, state["session"])
@@ -128,7 +127,7 @@ class ChatAgent:
         result = self.portfolio_operations.update_portfolio(
             session=state["session"],
             entities=state["entities"],
-            intent=state["intent"] or "unclear"
+            intent=state["intent"] or Intent.UNCLEAR
         )
         state["ui_hints"] = result.get("ui_hints", {})
         new_assets_count = len(state["session"].portfolio_state.assets)
@@ -144,7 +143,7 @@ class ChatAgent:
         result = self.response_generator.generate_response(
             session=state["session"],
             user_message=state["user_message"],
-            intent=state["intent"] or "unclear",
+            intent=state["intent"] or Intent.UNCLEAR,
             entities=state["entities"],
             portfolio_state=state["session"].portfolio_state
         )

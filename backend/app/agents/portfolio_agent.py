@@ -13,11 +13,11 @@ from langgraph.graph import END, StateGraph
 
 from ..models.assets import Asset
 from ..models.portfolio import Portfolio
+from .core.vector_store import VectorStore
 from .state.agent import AgentState
 from .state.analysis import AnalysisResult
 from .state.news import NewsItem
 from .tools import AnalysisTool, ClassificationTool, NewsSearchTool, PortfolioSummarizerTool
-from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 

@@ -3,8 +3,10 @@ import logging
 from langchain.schema import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
 from langfuse.decorators import langfuse_context, observe
+from pydantic import ValidationError
 
 from ...config.prompts import prompt_manager
+from ..response_models import Intent, IntentClassificationResponse
 from ..state.chat_state import ChatSession
 
 logger = logging.getLogger(__name__)
@@ -15,13 +17,13 @@ class IntentClassifier:
         self.llm = llm
 
     @observe(name="classify_intent_tool")
-    def classify_intent(self, session: ChatSession, user_message: str) -> str:
+    def classify_intent(self, session: ChatSession, user_message: str) -> Intent:
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-10:]:
-            if msg.role == "user":
-                conversation_history.append(HumanMessage(content=msg.content))
-            else:
-                conversation_history.append(AIMessage(content=msg.content))
+            conversation_history.append(
+                HumanMessage(content=msg.content) if msg.role == "user"
+                else AIMessage(content=msg.content)
+            )
 
         messages = prompt_manager.build_messages(
             system_prompt_name="chat-intent-classifier",
@@ -29,30 +31,31 @@ class IntentClassifier:
             conversation_history=conversation_history
         )
 
-        try:
-            response = self.llm.invoke(messages)
-            intent_text = response.content
-
-            if isinstance(intent_text, list):
-                intent_text = next((item for item in intent_text if isinstance(item, str)), "")
-            elif hasattr(intent_text, 'content') and not isinstance(intent_text, str):
-                intent_text = intent_text.content
-
-            intent = intent_text.strip().lower()
-
+        def _observe(extra: dict):
             langfuse_context.update_current_observation(
                 metadata={
-                    "intent": intent,
                     "session_id": session.session_id,
-                    "message_count": len(session.messages)
-                }
-            )
+                    "message_count": len(session.messages),
+                    "user_message": user_message,
+                    **extra
+                    }
+                )
+
+        try:
+            raw_response = self.llm.with_structured_output(IntentClassificationResponse).invoke(messages, timeout=8)
+            try:
+                intent_response = IntentClassificationResponse.model_validate(raw_response)
+                intent = intent_response.intent
+            except ValidationError as ve:
+                logger.error(f"Intent validation error: {ve}", exc_info=True)
+                _observe({"validation_error": str(ve)})
+                intent = Intent.UNCLEAR
+
+            _observe({"intent": intent.value})
 
             return intent
 
         except Exception as e:
-            logger.error(f"Intent classification failed: {e}")
-            langfuse_context.update_current_observation(
-                metadata={"error": str(e)}
-            )
-            return "unclear"
+            logger.error(f"Intent classification failed: {e}", exc_info=True)
+            _observe({"error": str(e)})
+            return Intent.UNCLEAR

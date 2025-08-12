@@ -12,13 +12,13 @@ from pydantic import SecretStr
 
 from ..config.prompts import prompt_manager
 from ..models.assets import Asset
-from .response_models import (
+from ..models import (
+    AnalysisResult,
     AssetAnalysisResponse,
     NewsClassificationResponse,
+    NewsItem,
     PortfolioDigestResponse,
 )
-from .state.analysis import AnalysisResult
-from .state.news import NewsItem
 
 logger = logging.getLogger(__name__)
 

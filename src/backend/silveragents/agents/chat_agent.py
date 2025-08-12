@@ -13,12 +13,12 @@ from ..models.portfolio import Portfolio
 from .modules.entity_extractor import EntityExtractor
 from .modules.form_preparer import FormPreparer
 from .modules.intent_classifier import IntentClassifier
-from .response_models import Intent
+from ..models import Intent
 from .modules.portfolio_operations import PortfolioOperations
 from .modules.response_generator import ResponseGenerator
 from .modules.workflow_utils import WorkflowUtils
 from .session_storage import get_session_storage
-from .state.chat_state import ChatAgentState, ChatSession
+from ..models import ChatAgentState, ChatSession
 
 logger = logging.getLogger(__name__)
 

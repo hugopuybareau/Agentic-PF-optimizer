@@ -19,7 +19,7 @@ from qdrant_client.http.models import (
     VectorParams,
 )
 
-from ..state.news import NewsItem
+from ...models import NewsItem
 from ..utils import clean_value
 
 logger = logging.getLogger(__name__)

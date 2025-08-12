@@ -2,7 +2,7 @@ import logging
 
 from langfuse.decorators import langfuse_context, observe
 
-from ..state.chat_state import ChatAgentState
+from ...models import ChatAgentState
 
 logger = logging.getLogger(__name__)
 

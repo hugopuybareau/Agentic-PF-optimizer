@@ -4,8 +4,7 @@ from typing import Any
 from langfuse.decorators import langfuse_context, observe
 
 from ...models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
-from ..response_models import Intent
-from ..state.chat_state import ChatSession
+from ...models import ChatSession, Intent
 
 logger = logging.getLogger(__name__)
 

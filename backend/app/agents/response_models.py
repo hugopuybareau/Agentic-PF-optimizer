@@ -1,16 +1,23 @@
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
+class Intent(StrEnum):
+    ADD_ASSET = "add_asset"
+    REMOVE_ASSET = "remove_asset"
+    MODIFY_ASSET = "modify_asset"
+    COMPLETE_PORTFOLIO = "complete_portfolio"
+    VIEW_PORTFOLIO = "view_portfolio"
+    START_OVER = "start_over"
+    UNCLEAR = "unclear"
+    GENERAL_QUESTION = "general_question"
+
 class IntentClassificationResponse(BaseModel):
-    intent: Literal[
-        "add_asset", "remove_asset", "modify_asset", "complete_portfolio",
-        "view_portfolio", "start_over", "unclear", "general_question"
-    ] = Field(description="The classified intent from user message")
+    intent: Intent = Field(description="The classified intent from user message")
 
-
-class EntityExtractionResponse(BaseModel):
+class EntityData(BaseModel):
     ticker: str | None = Field(None, description="Stock ticker symbol if mentioned")
     symbol: str | None = Field(None, description="Cryptocurrency symbol if mentioned")
     amount: float | None = Field(None, description="Dollar amount or quantity")
@@ -25,10 +32,44 @@ class EntityExtractionResponse(BaseModel):
     balance: float | None = Field(None, description="Outstanding mortgage balance")
 
 
+class EntityExtractionResponse(BaseModel):
+    entities: list[EntityData] = Field(
+        default_factory=list,
+        description="List of extracted entities from the user message"
+    )
+    primary_entity: EntityData | None = Field(
+        None,
+        description="The main entity being discussed if multiple are found"
+    )
+
+
+class UIHints(BaseModel):
+    show_portfolio_summary: bool = Field(
+        default=False,
+        description="Whether to show portfolio summary in UI"
+    )
+    suggest_asset_types: bool = Field(
+        default=False,
+        description="Whether to suggest asset types to user"
+    )
+    current_asset_count: int = Field(
+        default=0,
+        description="Current number of assets in portfolio"
+    )
+    show_completion_button: bool = Field(
+        default=False,
+        description="Whether to show portfolio completion button"
+    )
+    highlight_missing_info: bool = Field(
+        default=False,
+        description="Whether to highlight missing asset information"
+    )
+
+
 class ResponseGenerationResponse(BaseModel):
     response: str = Field(description="The generated conversational response")
-    ui_hints: dict[str, Any] = Field(
-        default_factory=dict,
+    ui_hints: UIHints = Field(
+        default_factory=UIHints,
         description="UI hints for frontend display"
     )
 

@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 
+import pytest
 from app.models.assets import Cash, Crypto, Stock
 from app.models.portfolio import Portfolio
 from logs.config import setup_logging
@@ -15,7 +16,6 @@ setup_logging()
 logger = logging.getLogger(__name__)
 logger.info("Setting up Agentic Portfolio Optimizer tests...")
 
-import pytest
 
 @pytest.mark.asyncio
 async def test_agent():
@@ -89,7 +89,7 @@ def test_vector_store():
     logger.info("\n🗄️  Testing vector store...")
 
     try:
-        from app.agents.vector_store import VectorStore
+        from backend.app.agents.core.vector_store import VectorStore
 
         vector_store = VectorStore()
         logger.info("✅ Vector store initialized successfully")

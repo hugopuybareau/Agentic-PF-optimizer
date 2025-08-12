@@ -1,5 +1,3 @@
-# backend/app/config/langfuse_config.py
-
 import logging
 import os
 from functools import wraps
@@ -13,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class LangfuseConfig:
-    """Centralized Langfuse configuration and utilities."""
 
     _instance: Optional['LangfuseConfig'] = None
     _langfuse: Langfuse | None = None
@@ -38,7 +35,6 @@ class LangfuseConfig:
                 logger.warning("Langfuse is disabled or missing credentials")
 
     def _initialize_langfuse(self):
-        """Initialize Langfuse client and handler."""
         try:
             self._langfuse = Langfuse(
                 secret_key=self.secret_key,
@@ -59,16 +55,13 @@ class LangfuseConfig:
 
     @property
     def langfuse(self) -> Langfuse | None:
-        """Get Langfuse client instance."""
         return self._langfuse if self.enabled else None
 
     @property
     def handler(self) -> CallbackHandler | None:
-        """Get Langfuse callback handler."""
         return self._handler if self.enabled else None
 
     def get_callbacks(self) -> list:
-        """Get list of callbacks for LangChain."""
         return [self.handler] if self.handler else []
 
     def trace_function(self, name: str | None = None, **kwargs):
@@ -103,7 +96,6 @@ class LangfuseConfig:
         return decorator
 
     def observe_method(self, name: str | None = None, **kwargs):
-        """Method decorator for class methods with Langfuse observation."""
         def decorator(func):
             if not self.enabled:
                 return func
@@ -113,18 +105,14 @@ class LangfuseConfig:
         return decorator
 
 
-# Singleton instance
 langfuse_config = LangfuseConfig()
 
 
-# Utility functions
 def get_langfuse_callbacks():
-    """Get Langfuse callbacks for LangChain integration."""
     return langfuse_config.get_callbacks()
 
 
 def trace_agent_execution(agent_name: str, **metadata):
-    """Decorator for tracing agent execution."""
     return langfuse_config.trace_function(name=agent_name, **metadata)
 
 

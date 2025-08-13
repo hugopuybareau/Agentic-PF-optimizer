@@ -1,6 +1,4 @@
-import json
 import logging
-from typing import Any
 
 from langchain.schema import AIMessage, BaseMessage, HumanMessage
 from langchain_openai import AzureChatOpenAI
@@ -10,10 +8,10 @@ from pydantic import ValidationError
 from ...config.prompts import prompt_manager
 from ...models import (
     ChatSession,
+    EntityData,
     Intent,
     PortfolioBuildingState,
     ResponseGenerationResponse,
-    UIHints,
 )
 from ...models.assets import Asset, Cash, Crypto, Stock
 
@@ -28,11 +26,11 @@ class ResponseGenerator:
     def generate_response(
         self,
         session: ChatSession,
-        user_message: HumanMessage,
+        user_message: str,
         intent: Intent,
-        entities: dict[str, Any],
+        entities: list[EntityData],
         portfolio_state: PortfolioBuildingState
-    ) -> dict[str, Any]:
+    ) -> ResponseGenerationResponse:
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-8:]:
             conversation_history.append(
@@ -43,7 +41,7 @@ class ResponseGenerator:
         prompt_variables = {
             "portfolio_summary": self._get_portfolio_summary(portfolio_state),
             "intent": intent,
-            "entities": json.dumps(entities),
+            "entities": entities,
         }
 
         messages = prompt_manager.build_messages(
@@ -53,13 +51,6 @@ class ResponseGenerator:
             conversation_history=conversation_history
         )
 
-        ui_hints = UIHints(
-            show_portfolio_summary=len(portfolio_state.assets) > 0,
-            suggest_asset_types=len(portfolio_state.assets) < 2,
-            current_asset_count=len(portfolio_state.assets),
-            show_completion_button=len(portfolio_state.assets) >= 3,
-            highlight_missing_info=False
-        )
 
         def _observe(extra: dict):
             langfuse_context.update_current_observation(
@@ -75,19 +66,16 @@ class ResponseGenerator:
         try:
             raw_response = self.llm.with_structured_output(ResponseGenerationResponse).invoke(messages, timeout=10)
             try:
-                response = ResponseGenerationResponse.model_validate(raw_response)
-                result = response.model_dump(exclude_none=True)
+                result = ResponseGenerationResponse.model_validate(raw_response)
             except ValidationError as ve:
                 logger.error(f"Response validation error: {ve}", exc_info=True)
                 _observe({"validation_error": str(ve)})
                 result = ResponseGenerationResponse(
-                    response="I encountered an error processing your request. Could you please rephrase?",
-                    ui_hints=ui_hints
-                ).model_dump(exclude_none=True)
+                    response="I encountered an error processing your request. Could you please rephrase?"
+                )
 
             _observe({
-                "response_length": len(result.get("response", "")),
-                "ui_hints": result.get("ui_hints", {})
+                "response_length": len(result.response)
             })
 
             return result
@@ -96,9 +84,8 @@ class ResponseGenerator:
             logger.error(f"Response generation failed: {e}", exc_info=True)
             _observe({"error": str(e)})
             return ResponseGenerationResponse(
-                response="I encountered an error processing your request. Could you please rephrase?",
-                ui_hints=ui_hints
-            ).model_dump(exclude_none=True)
+                response="I encountered an error processing your request. Could you please rephrase?"
+            )
 
 
     def _get_portfolio_summary(self, portfolio_state: PortfolioBuildingState) -> str:

@@ -73,10 +73,6 @@ class UIHints(BaseModel):
 
 class ResponseGenerationResponse(BaseModel):
     response: str = Field(description="The generated conversational response")
-    ui_hints: UIHints = Field(
-        default_factory=UIHints,
-        description="UI hints for frontend display"
-    )
 
 
 class NewsClassificationResponse(BaseModel):
@@ -113,4 +109,31 @@ class PortfolioDigestResponse(BaseModel):
     risk_score: int = Field(
         ge=1, le=10,
         description="Overall portfolio risk score (1-10, 10 is highest risk)"
+    )
+
+
+class FormAssetData(BaseModel):
+    type: AssetType = Field(description="Type of asset")
+    ticker: str | None = Field(None, description="Stock ticker symbol")
+    shares: int | None = Field(None, description="Number of shares for stocks")
+    symbol: str | None = Field(None, description="Cryptocurrency symbol")
+    amount: float | None = Field(None, description="Amount for crypto or cash")
+    address: str | None = Field(None, description="Real estate address")
+    market_value: float | None = Field(None, description="Market value of real estate")
+    lender: str | None = Field(None, description="Mortgage lender name")
+    balance: float | None = Field(None, description="Outstanding mortgage balance")
+    property_address: str | None = Field(None, description="Property address for mortgage")
+    currency: str | None = Field(None, description="Currency code for cash")
+
+
+class FormSuggestion(BaseModel):
+    type: AssetType = Field(description="Type of suggested asset")
+    message: str = Field(description="Suggestion message to display")
+
+
+class PortfolioFormData(BaseModel):
+    assets: list[FormAssetData] = Field(description="List of assets in portfolio")
+    suggested_additions: list[FormSuggestion] = Field(
+        default_factory=list,
+        description="Suggested asset additions"
     )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
@@ -8,7 +9,10 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..base import Base
-from ..models import Asset, Portfolio
+
+if TYPE_CHECKING:
+    from .asset import Asset
+    from .portfolio import Portfolio
 
 
 class NewsItem(Base):

@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime
 from uuid import UUID
 
-from langchain.schema import HumanMessage
 from langchain_openai import AzureChatOpenAI
 from langfuse import Langfuse
 from langfuse.callback import CallbackHandler
@@ -17,13 +16,14 @@ from ..models import (
     AssetConfirmation,
     AssetType,
     ChatAgentState,
-    ChatResponse,
     ChatSession,
     ConfirmActionRequest,
     Intent,
     Portfolio,
     PortfolioAction,
     PortfolioConfirmationRequest,
+    ResponseGenerationResponse,
+    UIHints,
 )
 from .modules import (
     EntityExtractor,
@@ -35,6 +35,7 @@ from .modules import (
 )
 from .services import PortfolioService
 from .session_storage import get_session_storage
+from .utils import dump
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,6 @@ langfuse = Langfuse(
 class ChatAgent:
 
     def __init__(self, db: Session | None = None):
-        # Initialize Langfuse callback handler for LLM only
         self.langfuse_handler = CallbackHandler(
             secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
             public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
@@ -136,7 +136,6 @@ class ChatAgent:
         else:
             return "generate_response"
 
-    # Node implementations
     @observe(name="classify_intent_node")
     def _classify_intent_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info("Classifying user intent from message")
@@ -199,7 +198,7 @@ class ChatAgent:
             Intent.MODIFY_ASSET: PortfolioAction.UPDATE_ASSET
         }
 
-        action = action_map.get(intent, PortfolioAction.ADD_ASSET)
+        action = action_map.get(intent or Intent.UNCLEAR, PortfolioAction.ADD_ASSET)
 
         confirmation_request = PortfolioConfirmationRequest(
             confirmation_id=confirmation_id,
@@ -223,14 +222,16 @@ class ChatAgent:
 
         logger.info(f"Confirmation prepared: {confirmation_id} for {action}")
 
-        updated_ui_hints = state.ui_hints.copy()
-        updated_ui_hints.update({
-            "confirmation_pending": True,
-            "confirmation_id": confirmation_id
+        updated_ui_hints = (state.ui_hints or UIHints()).model_copy(update={
+            "show_portfolio_summary": True
         })
 
+        confirm_action = ConfirmActionRequest(
+            confirmation_id=confirmation_request.confirmation_id,
+            confirmed=False
+        )
         return state.model_copy(update={
-            "confirmation_request": confirmation_request.model_dump(),
+            "confirmation_request": confirm_action,
             "ui_hints": updated_ui_hints
         })
 
@@ -242,23 +243,23 @@ class ChatAgent:
         entities_list = state.entities
         intent = state.intent or Intent.UNCLEAR
 
-        combined_ui_hints = {}
-        for entity_data in entities_list:
-            entities_dict = entity_data.model_dump(exclude_none=True)
-            result = self.portfolio_operations.update_portfolio(
-                session=state.session,
-                entities=entities_dict,
-                intent=intent
-            )
-            ui_hints = result.get("ui_hints", {})
-            for key, value in ui_hints.items():
-                if key in combined_ui_hints:
-                    if isinstance(value, bool):
-                        combined_ui_hints[key] = combined_ui_hints[key] or value
-                    else:
-                        combined_ui_hints[key] = value
-                else:
-                    combined_ui_hints[key] = value
+        new_ui_hints = self.portfolio_operations.update_portfolio(
+            session=state.session,
+            entities=entities_list,
+            intent=intent
+        )
+
+        updated_ui_hints = (state.ui_hints or UIHints()).model_copy()
+        if new_ui_hints.show_portfolio_summary:
+            updated_ui_hints.show_portfolio_summary = True
+        if new_ui_hints.suggest_asset_types:
+            updated_ui_hints.suggest_asset_types = True
+        if new_ui_hints.current_asset_count > 0:
+            updated_ui_hints.current_asset_count = new_ui_hints.current_asset_count
+        if new_ui_hints.show_completion_button:
+            updated_ui_hints.show_completion_button = True
+        if new_ui_hints.highlight_missing_info:
+            updated_ui_hints.highlight_missing_info = True
 
         new_assets_count = len(state.session.portfolio_state.assets)
 
@@ -267,55 +268,30 @@ class ChatAgent:
         else:
             logger.info("Portfolio state unchanged")
 
-        return state.model_copy(update={"ui_hints": combined_ui_hints})
+        return state.model_copy(update={"ui_hints": updated_ui_hints})
 
     @observe(name="generate_response_node")
     def _generate_response_node(self, state: ChatAgentState) -> ChatAgentState:
         logger.info("Generating response to user")
 
         if hasattr(state, 'confirmation_request') and state.confirmation_request:
-            if "confirmation_data" in state.ui_hints:
-                conf_req = state.ui_hints["confirmation_data"]
-                updated_ui_hints = state.ui_hints.copy()
-                updated_ui_hints.update({
-                    "show_confirmation": True,
-                    "confirmation_data": conf_req
-                })
-                return state.model_copy(update={
-                    "response": conf_req["message"],
-                    "ui_hints": updated_ui_hints
-                })
-            else:
-                return state.model_copy(update={"response": "Please confirm the action."})
+            return state.model_copy(update={
+                "response": ResponseGenerationResponse(response="Please confirm this change."),
+                "ui_hints": state.ui_hints or UIHints()
+            })
         else:
-            entities_list = state.entities
-            combined_entities = {}
-            if entities_list:
-                asset_types = set()
-                for entity_data in entities_list:
-                    entity_dict = entity_data.model_dump(exclude_none=True)
-                    combined_entities.update(entity_dict)
-                    if entity_dict.get("asset_type"):
-                        asset_types.add(entity_dict["asset_type"])
-                if len(asset_types) > 1:
-                    combined_entities["multiple_assets"] = True
-                    combined_entities["asset_types"] = list(asset_types)
-
             result = self.response_generator.generate_response(
                 session=state.session,
                 user_message=state.user_message,
                 intent=state.intent or Intent.UNCLEAR,
-                entities=combined_entities,
+                entities=state.entities,
                 portfolio_state=state.session.portfolio_state
             )
 
-            logger.info(f"Response generated ({len(result['response'])} characters)")
-            updated_ui_hints = state.ui_hints.copy()
-            updated_ui_hints.update(result["ui_hints"])
+            logger.info(f"Response generated ({len(result.response)} characters)")
 
             return state.model_copy(update={
-                "response": result["response"],
-                "ui_hints": updated_ui_hints
+                "response": result
             })
 
     @observe(name="prepare_form_node")
@@ -338,8 +314,7 @@ class ChatAgent:
             asset_type_raw = entities.get("asset_type")
             if not asset_type_raw:
                 return None
-            
-            # Normalize asset type to match AssetType literal
+
             asset_type: AssetType
             if asset_type_raw.lower() == "stock":
                 asset_type = "stock"
@@ -472,12 +447,12 @@ class ChatAgent:
 
         initial_state = ChatAgentState(
             session=session,
-            user_message=HumanMessage(content=user_message),
+            user_message=user_message,
             current_step="start",
             intent=Intent.UNCLEAR,
             entities=[],
-            response=ChatResponse(message="", session_id=session_id),
-            ui_hints={},
+            response=ResponseGenerationResponse(response=""),
+            ui_hints=UIHints(),
             confirmation_request=ConfirmActionRequest(confirmation_id="temp", confirmed=False),
             show_form=False,
             form_data=None,
@@ -495,37 +470,45 @@ class ChatAgent:
             )
 
             logger.info("Invoking chat workflow graph")
-            result = self.graph.invoke(initial_state) # type: ignore
+            raw_result = self.graph.invoke(initial_state)  # type: ignore
+            result = ChatAgentState.model_validate(raw_result)
 
-            response_metadata = {
-                "ui_hints": result.ui_hints,
-                "show_form": result.show_form
+            message_text = result.response.response if result.response else "I'm not sure how to respond to that."
+
+            response_metadata = { #json safe
+                "ui_hints": dump(result.ui_hints),
+                "show_form": result.show_form,
+                **(
+                    {"confirmation_request": dump(result.confirmation_request)}
+                    if result.confirmation_request
+                    else {}
+                ),
             }
 
-            if result.confirmation_request:
-                response_metadata["confirmation_request"] = result.confirmation_request.model_dump()
-
-            session.add_message("assistant", result.response, response_metadata)
+            session.add_message("assistant", message_text, response_metadata)
             self.session_storage.set(session_id, session)
 
+            # has to be json serializable for sse
             response = {
-                "message": result.response,
+                "message": message_text,
                 "session_id": session_id,
-                "ui_hints": result.ui_hints,
+                "ui_hints": dump(result.ui_hints),
                 "show_form": result.show_form,
-                "form_data": result.form_data,
+                "form_data": dump(result.form_data) if result.form_data else None,
                 "portfolio_summary": {
                     "assets": len(session.portfolio_state.assets),
-                    "is_complete": session.portfolio_state.is_complete
-                }
+                    "is_complete": session.portfolio_state.is_complete,
+                },
+                **(
+                    {
+                        "confirmation_request": dump(result.confirmation_request),
+                        "requires_confirmation": getattr(result.confirmation_request, "confirmed", None) is None,
+                    }
+                    if result.confirmation_request
+                    else {}
+                ),
+                **({"errors": list(result.errors)} if result.errors else {}),
             }
-
-            if result.confirmation_request:
-                response["confirmation_request"] = result.confirmation_request.model_dump()
-                response["requires_confirmation"] = True
-
-            if result.errors:
-                response["errors"] = result.errors
 
             trace.update(
                 output=response,
@@ -533,13 +516,20 @@ class ChatAgent:
                     "success": True,
                     "asset_count": len(session.portfolio_state.assets),
                     "show_form": result.show_form,
-                    "intent": result.intent,
+                    "intent": dump(result.intent),
                     "entities_extracted": bool(result.entities),
-                    "confirmation_pending": bool(result.confirmation_request)
-                }
+                    "confirmation_pending": bool(
+                        result.confirmation_request
+                        and getattr(result.confirmation_request, "confirmed", None) is None
+                    ),
+                },
             )
 
-            logger.info(f"Message processed - Assets: {len(session.portfolio_state.assets)}, Confirmation: {bool(result.confirmation_request)}")
+            logger.info(
+                "Message processed - Assets: %s, Confirmation: %s",
+                len(session.portfolio_state.assets),
+                bool(result.confirmation_request),
+            )
             return response
 
         except Exception as e:
@@ -640,7 +630,14 @@ class ChatAgent:
     ) -> dict:
 
         try:
-            asset = self.portfolio_operations._create_asset_from_entities(entities)
+            primary_entity = entities[0] if entities else None
+            if not primary_entity:
+                return {
+                    "success": False,
+                    "message": "No entity data provided"
+                }
+
+            asset = self.portfolio_operations._create_asset_from_entity(primary_entity)
 
             if not asset:
                 return {

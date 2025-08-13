@@ -7,7 +7,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..agents.chat_agent import ChatAgent
@@ -20,18 +19,14 @@ from ..models import (
     ChatConfirmation,
     ChatMessageRequest,
     ChatResponse,
-    Portfolio,
     PortfolioSubmission,
 )
 
 logger = logging.getLogger(__name__)
 
-
-
 # Initialize agents (in production, use dependency injection)
 chat_agent = None
 portfolio_agent = None
-
 
 def get_chat_agent(db: Session | None = None):
     global chat_agent
@@ -39,16 +34,13 @@ def get_chat_agent(db: Session | None = None):
         chat_agent = ChatAgent(db)
     return chat_agent
 
-
 def get_portfolio_agent():
     global portfolio_agent
     if portfolio_agent is None:
         portfolio_agent = PortfolioAgent()
     return portfolio_agent
 
-
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
-
 
 @chat_router.post("/message", response_model=ChatResponse)
 async def send_message(
@@ -76,7 +68,7 @@ async def send_message(
             session_id=session_id,
             user_message=request.message,
             user_id=user_id,
-            db=db
+            _db=db
         )
 
         logger.info(f"Chat message processed successfully for session {session_id}")
@@ -159,29 +151,23 @@ async def stream_chat_response(
     try:
         agent = get_chat_agent(db)
 
-        # Process the message to get the complete response
         result = agent.process_message(
             session_id=session_id,
             user_message=message,
             user_id=user_id,
-            db=db
+            _db=db
         )
 
-        # Extract the response text
         response_text = result.get("message", "")
 
-        # Send initial metadata (including confirmation request if present)
         metadata = {k: v for k, v in result.items() if k != "message"}
         metadata["type"] = "metadata"
         yield f"data: {json.dumps(metadata)}\n\n"
 
-        # Stream the response text token by token
         words = response_text.split()
         for i, word in enumerate(words):
-            # Determine delay based on punctuation
             delay = 0.1 if word.endswith(('.', '!', '?', ':')) else 0.05
 
-            # Send the word
             chunk_data = {
                 'type': 'token',
                 'content': word + (' ' if i < len(words) - 1 else ''),
@@ -190,10 +176,8 @@ async def stream_chat_response(
             }
             yield f"data: {json.dumps(chunk_data)}\n\n"
 
-            # Add delay for natural feel
             await asyncio.sleep(delay)
 
-        # Send completion signal
         yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
     except Exception as e:
@@ -340,7 +324,6 @@ async def submit_portfolio(
             detail=str(e)
         ) from e
 
-
 @chat_router.get("/session/{session_id}")
 async def get_session(
     session_id: str,
@@ -399,7 +382,6 @@ async def get_session(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         ) from e
-
 
 @chat_router.delete("/session/{session_id}")
 async def clear_session(

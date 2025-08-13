@@ -1,3 +1,4 @@
+
 from pydantic import BaseModel
 
 from .assets import Asset
@@ -24,4 +25,4 @@ class UpdateAssetRequest(BaseModel):
 
 class ConfirmActionRequest(BaseModel):
     confirmation_id: str
-    confirmed: bool
+    confirmed: bool | None = None

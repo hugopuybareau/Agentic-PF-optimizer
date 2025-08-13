@@ -25,10 +25,13 @@ from .responses import (
     AssetAnalysisResponse,
     EntityData,
     EntityExtractionResponse,
+    FormAssetData,
+    FormSuggestion,
     Intent,
     IntentClassificationResponse,
     NewsClassificationResponse,
     PortfolioDigestResponse,
+    PortfolioFormData,
     ResponseGenerationResponse,
     UIHints,
 )
@@ -51,7 +54,7 @@ __all__ = [
     "PortfolioBuildingState",
     # Chat API
     "ChatConfirmation",
-    "ChatMessageRequest", 
+    "ChatMessageRequest",
     "ChatResponse",
     "PortfolioSubmission",
     # Agent States
@@ -64,10 +67,13 @@ __all__ = [
     "AssetAnalysisResponse",
     "EntityData",
     "EntityExtractionResponse",
+    "FormAssetData",
+    "FormSuggestion",
     "Intent",
     "IntentClassificationResponse",
     "NewsClassificationResponse",
     "PortfolioDigestResponse",
+    "PortfolioFormData",
     "ResponseGenerationResponse",
     "UIHints",
     # Portfolio Responses

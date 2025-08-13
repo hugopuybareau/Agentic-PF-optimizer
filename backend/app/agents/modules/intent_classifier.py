@@ -16,7 +16,7 @@ class IntentClassifier:
         self.llm = llm
 
     @observe(name="classify_intent_tool")
-    def classify_intent(self, session: ChatSession, user_message: HumanMessage) -> Intent:
+    def classify_intent(self, session: ChatSession, user_message: str) -> Intent:
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-10:]:
             conversation_history.append(

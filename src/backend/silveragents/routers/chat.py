@@ -16,15 +16,15 @@ from ..auth.dependencies import get_current_user_optional
 from ..db.base import get_db
 from ..db.models import User
 from ..models import (
-    ChatConfirmation,
     ChatMessageRequest,
     ChatResponse,
+    PortfolioActionResult,
     PortfolioSubmission,
+    UserConfirmationResponse,
 )
 
 logger = logging.getLogger(__name__)
 
-# Initialize agents (in production, use dependency injection)
 chat_agent = None
 portfolio_agent = None
 
@@ -75,9 +75,9 @@ async def send_message(
         ) from e
 
 
-@chat_router.post("/confirm", response_model=dict)
+@chat_router.post("/confirm", response_model=PortfolioActionResult)
 async def confirm_action(
-    request: ChatConfirmation,
+    request: UserConfirmationResponse,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
     db: Annotated[Session, Depends(get_db)]
 ):

@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `assets.py`: Asset types (Stock, Crypto, RealEstate, Mortgage, Cash) with `AssetType` literal for type safety
   - `portfolio.py`: Portfolio and PortfolioRequest models
   - `chat.py`: ChatMessage, ChatSession, PortfolioBuildingState for conversational workflows
-  - `agent_state.py`: ChatAgentState, AgentState for LangGraph workflow states
+  - `agent_state.py`: ChatAgentState, PortfolioAgentState for LangGraph workflow states
   - `analysis.py`: AnalysisResult, NewsItem for portfolio analysis
   - `responses.py`: All LLM response models (Intent, EntityData, UIHints, etc.)
   - `portfolio_responses.py`: Portfolio action models (AssetConfirmation, PortfolioConfirmationRequest, etc.)

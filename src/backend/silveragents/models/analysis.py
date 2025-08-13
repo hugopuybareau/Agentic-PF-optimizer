@@ -16,7 +16,6 @@ class NewsItem(BaseModel):
     relevance_score: float | None = None
     asset_related: str | None = None
 
-
 class AnalysisResult(BaseModel):
     asset_key: str
     asset: Asset
@@ -25,4 +24,3 @@ class AnalysisResult(BaseModel):
     risk_assessment: str
     recommendations: list[str]
     confidence_score: float
-

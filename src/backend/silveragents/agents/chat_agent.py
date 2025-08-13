@@ -17,7 +17,6 @@ from ..models import (
     AssetType,
     ChatAgentState,
     ChatSession,
-    ConfirmActionRequest,
     EntityData,
     Intent,
     Portfolio,
@@ -228,12 +227,8 @@ class ChatAgent:
             "show_portfolio_summary": True
         })
 
-        confirm_action = ConfirmActionRequest(
-            confirmation_id=confirmation_request.confirmation_id,
-            confirmed=False
-        )
         return state.model_copy(update={
-            "confirmation_request": confirm_action,
+            "confirmation_request": confirmation_request,
             "ui_hints": updated_ui_hints
         })
 
@@ -455,7 +450,7 @@ class ChatAgent:
             entities=[],
             response=ResponseGenerationResponse(response=""),
             ui_hints=UIHints(),
-            confirmation_request=ConfirmActionRequest(confirmation_id="temp", confirmed=False),
+            confirmation_request=None,
             show_form=False,
             form_data=None,
             errors=[]

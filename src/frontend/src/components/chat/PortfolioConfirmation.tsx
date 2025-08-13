@@ -22,16 +22,17 @@ interface AssetConfirmation {
     display_text: string;
 }
 
-interface ConfirmationRequest {
+interface PortfolioConfirmationRequest {
     confirmation_id: string;
-    action: string;
+    action: 'add_asset' | 'remove_asset' | 'update_asset';
     assets: AssetConfirmation[];
     message: string;
     requires_confirmation: boolean;
+    metadata?: Record<string, any>;
 }
 
 interface PortfolioConfirmationProps {
-    confirmationRequest: ConfirmationRequest;
+    confirmationRequest: PortfolioConfirmationRequest;
     onConfirm: (confirmationId: string, confirmed: boolean) => void;
     isProcessing?: boolean;
 }

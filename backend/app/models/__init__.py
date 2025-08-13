@@ -1,23 +1,26 @@
-from .agent_state import AgentState, ChatAgentState
+from .agent_state import ChatAgentState, PortfolioAgentState
 from .analysis import AnalysisResult, NewsItem
 from .assets import Asset, AssetType, Cash, Crypto, Mortgage, RealEstate, Stock
 from .chat import ChatMessage, ChatSession, PortfolioBuildingState
-from .chat_api import ChatConfirmation, ChatMessageRequest, ChatResponse, PortfolioSubmission
+from .chat_api import (
+    ChatMessageRequest,
+    ChatResponse,
+    PortfolioSubmission,
+    UserConfirmationResponse,
+)
 from .portfolio import Portfolio, PortfolioRequest
 from .portfolio_requests import (
     AddAssetRequest,
-    ConfirmActionRequest,
+    AssetConfirmation,
+    PortfolioAction,
+    PortfolioConfirmationRequest,
     RemoveAssetRequest,
     UpdateAssetRequest,
 )
 from .portfolio_responses import (
-    AssetConfirmation,
     AssetModification,
     ChatPortfolioUpdate,
-    PortfolioAction,
     PortfolioActionResult,
-    PortfolioConfirmationRequest,
-    PortfolioConfirmationResponse,
     PortfolioEvent,
     PortfolioEventType,
     PortfolioSnapshot,
@@ -56,12 +59,12 @@ __all__ = [
     "ChatSession",
     "PortfolioBuildingState",
     # Chat API
-    "ChatConfirmation",
+    "UserConfirmationResponse",
     "ChatMessageRequest",
     "ChatResponse",
     "PortfolioSubmission",
     # Agent States
-    "AgentState",
+    "PortfolioAgentState",
     "ChatAgentState",
     # Analysis
     "AnalysisResult",
@@ -81,20 +84,18 @@ __all__ = [
     "ResponseGenerationResponse",
     "UIHints",
     # Portfolio Responses
-    "AssetConfirmation",
     "AssetModification",
     "ChatPortfolioUpdate",
-    "PortfolioAction",
     "PortfolioActionResult",
-    "PortfolioConfirmationRequest",
-    "PortfolioConfirmationResponse",
     "PortfolioEvent",
     "PortfolioEventType",
     "PortfolioSnapshot",
     "PortfolioSummary",
     # Portfolio Requests
     "AddAssetRequest",
-    "ConfirmActionRequest",
+    "AssetConfirmation",
+    "PortfolioAction",
+    "PortfolioConfirmationRequest",
     "RemoveAssetRequest",
     "UpdateAssetRequest",
 ]

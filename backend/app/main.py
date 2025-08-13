@@ -8,9 +8,7 @@ from logs.config import setup_logging
 
 from .db import models  # noqa: F401
 from .db.base import Base, engine
-from .routers.auth import auth_router
-from .routers.chat import chat_router
-from .routers.digest import digest_router
+from .routers import auth_router, chat_router, digest_router, portfolio_router
 
 setup_logging()
 
@@ -38,8 +36,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat_router, prefix="/api", tags=["chat"])
-app.include_router(digest_router, prefix="/api", tags=["portfolio"])
+app.include_router(digest_router, prefix="/api", tags=["digest"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
+app.include_router(portfolio_router, prefix="/api", tags=["portfolio"])
 
 @app.get("/")
 async def root():

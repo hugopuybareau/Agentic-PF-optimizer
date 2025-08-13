@@ -15,22 +15,24 @@ class WorkflowUtils:
         decision = "continue"
         reason = "not_ready"
 
-        if state.session.portfolio_state.is_complete:
+        if state.confirmation_request:
             decision = "show_form"
-            reason = "portfolio_complete"
-        elif len(state.session.portfolio_state.assets) >= 2:
-            keywords = ["done", "finish", "complete", "review", "that's all", "that's it", "show me", "see my"]
-            user_msg = state.user_message
-            user_msg_str = str(user_msg)
-            if any(keyword in user_msg_str for keyword in keywords):
-                decision = "show_form"
-                reason = "user_indicated_completion"
+            reason = "confirmation_ready"
+        else:
+            if state.entities:
+                keywords = ["done", "finish", "complete", "review", "that's all", "that's it", "show me", "see my"]
+                user_msg = state.user_message
+                user_msg_str = str(user_msg)
+                if any(keyword in user_msg_str.lower() for keyword in keywords):
+                    decision = "show_form"
+                    reason = "user_indicated_completion"
 
         langfuse_context.update_current_observation(
             metadata={
                 "decision": decision,
                 "reason": reason,
-                "asset_count": len(state.session.portfolio_state.assets)
+                "entity_count": len(state.entities) if state.entities else 0,
+                "has_confirmation_request": bool(state.confirmation_request)
             }
         )
 

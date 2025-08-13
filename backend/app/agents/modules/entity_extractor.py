@@ -89,8 +89,10 @@ class EntityExtractor:
 
     @observe(name="resolve_references")
     def resolve_references(self, entity_data: EntityData, session: ChatSession) -> EntityData:
-        if session.portfolio_state.current_asset_type and not entity_data.asset_type:
-            entity_data.asset_type = session.portfolio_state.current_asset_type
+        # Check if there's a current asset type in session context
+        current_asset_type = session.context.get("current_asset_type")
+        if current_asset_type and not entity_data.asset_type:
+            entity_data.asset_type = current_asset_type
 
         # Extract recent numerical values from conversation history for reference resolution
         if session.messages:

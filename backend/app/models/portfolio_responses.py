@@ -42,10 +42,6 @@ class ChatPortfolioUpdate(BaseModel):
         default=False,
         description="If true, skip confirmation and execute immediately"
     )
-    portfolio_state: dict[str, Any] | None = Field(
-        None,
-        description="Current portfolio state after update"
-    )
 
 
 class PortfolioSnapshot(BaseModel):

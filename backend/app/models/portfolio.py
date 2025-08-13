@@ -1,6 +1,3 @@
-# backend/app/models/models.py
-
-
 from pydantic import BaseModel
 
 from .assets import Asset

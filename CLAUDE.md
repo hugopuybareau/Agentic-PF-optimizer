@@ -32,21 +32,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Databases**: PostgreSQL (user data, portfolios), Qdrant vector database (news/analysis storage), Redis (chat session storage)
 - **Agent System**: Two LangGraph workflows - chat flow for portfolio building and analysis flow for market insights
 
+### Data Models (backend/app/models/)
+- **Centralized Model Architecture**: All Pydantic models consolidated in `/models/` folder with complete type safety
+- **Core Models**:
+  - `assets.py`: Asset types (Stock, Crypto, RealEstate, Mortgage, Cash) with `AssetType` literal for type safety
+  - `portfolio.py`: Portfolio and PortfolioRequest models
+  - `chat.py`: ChatMessage, ChatSession, PortfolioBuildingState for conversational workflows
+  - `agent_state.py`: ChatAgentState, AgentState for LangGraph workflow states
+  - `analysis.py`: AnalysisResult, NewsItem for portfolio analysis
+  - `responses.py`: All LLM response models (Intent, EntityData, UIHints, etc.)
+  - `portfolio_responses.py`: Portfolio action models (AssetConfirmation, PortfolioConfirmationRequest, etc.)
+  - `portfolio_requests.py`: Portfolio modification request models
+- **Type Safety**: All asset types use `AssetType` literal instead of strings for compile-time validation
+- **Clean Imports**: All models accessible via `from app.models import ModelName`
+
 ### Chat Agent System (backend/app/agents/)
 - **ChatAgent** (`chat_agent.py`): Conversational agent for building portfolios through natural language
   - Uses Azure OpenAI GPT-4o-mini for intent classification and entity extraction
-  - LangGraph workflow: classify_intent → extract_entities → update_portfolio → generate_response/prepare_form
+  - **LangGraph Workflow**: classify_intent → extract_entities → prepare_confirmation → update_portfolio → generate_response/prepare_form
+  - **Portfolio Modification Tools**: Handles add_asset, remove_asset, modify_asset with user confirmation flows
+  - **Confirmation System**: Two-step process - conversation builds portfolio in-memory, confirmation updates database
   - Handles progressive asset collection and context-aware references
 - **Session Management** (`session_storage.py`): Redis-backed session storage with in-memory fallback
   - Supports Redis for production, hybrid mode for development
   - TTL-based session expiration and cleanup
-- **State Models** (`state/chat_state.py`): Pydantic models for chat sessions and portfolio building state
+- **Modular Architecture**: Separate modules for intent classification, entity extraction, portfolio operations, response generation
 
 ### Portfolio Analysis Agent
 - **PortfolioAgent** (`portfolio_agent.py`): LangGraph workflow for portfolio analysis and market insights
-- **State Management** (`state/agent.py`, `state/analysis.py`): Defines analysis workflow state
 - **Tools** (`tools.py`): NewsSearchTool, ClassificationTool, AnalysisTool, PortfolioSummarizerTool
-- **Vector Store** (`vector_store.py`): Qdrant integration for semantic search and news storage
+- **Vector Store** (`core/vector_store.py`): Qdrant integration for semantic search and news storage
 
 ### API Structure
 - **Chat System**: `/api/chat/*` 
@@ -93,10 +108,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Chat System Features
 - **Conversational Portfolio Building**: Natural language asset collection with progressive questioning
+- **Portfolio Modification Tools**: Complete CRUD operations for portfolio assets
+  - Add assets through natural conversation ("I want to add 100 shares of Apple")
+  - Remove assets ("Remove my Tesla position")
+  - Modify existing assets ("Update my Apple shares to 150")
+  - Complete portfolio building workflow
+- **Two-Phase Portfolio Management**:
+  - **Phase 1**: Conversational building - assets stored in in-memory session state
+  - **Phase 2**: Database persistence - user confirms actions before database updates
 - **Streaming Chat Output**: Real-time message streaming for responsive user experience
-- **Intent Classification**: Handles add_asset, remove_asset, modify_asset, complete_portfolio, etc.
-- **Entity Extraction**: Extracts asset details (ticker, amount, type) from natural language
+- **Intent Classification**: Handles add_asset, remove_asset, modify_asset, complete_portfolio, view_portfolio, etc.
+- **Entity Extraction**: Extracts asset details (ticker, amount, type) from natural language with `AssetType` validation
 - **Context Awareness**: Resolves references like "the same amount", "that stock"
+- **Confirmation System**: User-friendly confirmation dialogs for all portfolio modifications
 - **Session Persistence**: Redis-backed sessions with automatic expiration and cross-tab restoration
 - **Tab-Aware Session Restoration**: Sessions persist when switching browser tabs and automatically restore chat history
 - **Form Generation**: Converts chat-built portfolio to structured form for review
@@ -116,11 +140,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Internationalization**: Ensure all new UI text uses i18next translation keys instead of hardcoded strings
 - **Feature Integration**: For significant new features, update this CLAUDE.md file to document the integration
 
+### Model Architecture
+- **Centralized Models**: All data models located in `backend/app/models/` for single source of truth
+- **Domain Separation**: Models organized by domain (assets, chat, analysis, responses, portfolio_responses) not by location
+- **Clean Imports**: Use `from app.models import Model` instead of deep imports
+- **Type Safety**: Complete Pydantic model usage throughout - no dict access patterns
+  - All agent methods use proper Pydantic models and enum types (e.g., `Intent` enum not strings)
+  - `AssetType` literal ensures compile-time validation of asset types
+  - LangGraph nodes return `ChatAgentState` objects using `state.model_copy(update={...})` pattern
+  - All state access uses Pydantic attributes (`state.field`) not dict access (`state["field"]`)
+- **Professional Patterns**: Immutable state updates with proper type checking
+
 ### Agent Development
-- Both agents use LangGraph StateGraph for workflow orchestration
-- State classes use TypedDict for type safety and Pydantic for validation
-- Tools are modular and can be easily extended or replaced
-- Error handling with graceful fallbacks and user-friendly messages
+- **LangGraph Architecture**: Both agents use LangGraph StateGraph for workflow orchestration
+- **Pure Pydantic Models**: All state classes use Pydantic BaseModel (no TypedDict) for complete type safety
+  - Nodes return `ChatAgentState` objects using `state.model_copy(update={...})` pattern
+  - No dict access anywhere - only `state.attribute` access patterns
+  - Complete type checking and IntelliSense support
+- **Modular Tools**: Portfolio operations, entity extraction, response generation are separate modules
+- **Portfolio Workflow**: 
+  - In-memory portfolio building during conversation
+  - Confirmation-based database persistence
+  - Support for complex multi-asset operations
+- **Error Handling**: Graceful fallbacks and user-friendly messages
+- **Structured Output**: All LLM calls use Pydantic models with proper schemas for OpenAI compatibility
+- **Type Safety**: Methods return proper types (Intent enum, AssetType literal) not mixed string/enum types
 
 ### Session Management
 - Use `get_session_storage()` factory for environment-appropriate storage
@@ -132,6 +176,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Backend tests in `backend/test/` directory
 - Test both individual tools and full agent workflows
 - Mock external API calls (Azure OpenAI, NewsAPI)
+
+### Portfolio Modification System
+- **Dual-Phase Architecture**:
+  - **Session State**: In-memory portfolio building during chat conversation
+  - **Database State**: Persistent storage after user confirmation
+- **Confirmation Workflow**:
+  - User expresses intent ("Add 100 AAPL shares")
+  - System extracts entities and prepares confirmation
+  - User confirms/rejects the action
+  - Database updated only after confirmation
+- **Portfolio Operations** (`agents/modules/portfolio_operations.py`):
+  - Handles in-memory portfolio state updates
+  - Creates Asset objects from extracted entities
+  - Manages UI hints for frontend guidance
+- **Portfolio Service** (`agents/services/portfolio_service.py`):
+  - Database operations for confirmed portfolio changes
+  - CRUD operations on persistent portfolio data
+  - Portfolio summary and validation
 
 ## Commit Conventions
 Follow format: `<type>(optional-scope): <short summary>`

@@ -1,7 +1,7 @@
 # backend/app/routers/auth.py
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -24,11 +24,9 @@ from ..db.models import User
 logger = logging.getLogger(__name__)
 auth_router = APIRouter(prefix="/auth", tags=["authentication"])
 
-# Auth schemes
 _bearer = HTTPBearer()
 _bearer_optional = HTTPBearer(auto_error=False)
 
-# Supported language codes
 _SUPPORTED_LANGUAGES = {"en", "fr"}
 
 
@@ -93,7 +91,7 @@ async def login(
             detail="Inactive user",
         )
 
-    user.last_login = datetime.now(timezone.utc) #type: ignore
+    user.last_login = datetime.now(UTC)
     db.commit()
 
     return Token(
@@ -132,16 +130,6 @@ async def get_current_user_info(
     return current_user
 
 
-# @router.post("/logout", status_code=status.HTTP_200_OK)
-# async def logout(
-#     current_user: Annotated[User, Depends(get_current_user)],
-# ) -> dict[str, str]:
-#     """
-#     placeholder logout endpoint.
-#     """
-#     return {"message": "Successfully logged out"}
-
-
 @auth_router.patch("/me/language", response_model=UserResponse)
 async def update_preferred_language(
     preferred_language: Annotated[str, Body(..., embed=True)],
@@ -154,7 +142,7 @@ async def update_preferred_language(
             detail=f"Unsupported language: {preferred_language}",
         )
 
-    current_user.preferred_language = preferred_language #type: ignore
+    current_user.preferred_language = preferred_language
     db.commit()
     db.refresh(current_user)
     return current_user

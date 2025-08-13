@@ -1,35 +1,66 @@
-## db/models/newsitem.py
+from __future__ import annotations
 
-import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ...db.base import Base
+from ..base import Base
+
+if TYPE_CHECKING:
+    from .asset import Asset
+    from .portfolio import Portfolio
 
 
 class NewsItem(Base):
     __tablename__ = "news_items"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    portfolio_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("portfolios.id", ondelete="CASCADE"),
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
         nullable=False,
     )
-    asset_id = Column(
-        UUID(as_uuid=True),
+
+    portfolio_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("portfolios.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+
+    asset_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
         ForeignKey("assets.id", ondelete="SET NULL"),
+        index=True,
         nullable=True,
     )
-    title = Column(String, nullable=False)
-    url = Column(String, nullable=False)
-    published_at = Column(DateTime, nullable=False)
-    snippet = Column(Text, nullable=True)
-    sentiment = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
-    portfolio = relationship("Portfolio", back_populates="news_items")
-    asset = relationship("Asset")
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    url: Mapped[str] = mapped_column(String, nullable=False)
+
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+    snippet: Mapped[str | None] = mapped_column(Text)
+    sentiment: Mapped[str | None] = mapped_column(String)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    portfolio: Mapped[Portfolio] = relationship(
+        back_populates="news_items",
+        lazy="selectin",
+    )
+    asset: Mapped[Asset | None] = relationship(
+        lazy="selectin",
+    )

@@ -1,5 +1,3 @@
-# backend/app/routers/chat.py
-
 import asyncio
 import json
 import logging
@@ -9,48 +7,32 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from ..agents.chat_agent import ChatAgent
 from ..agents.portfolio_agent import PortfolioAgent
+from ..agents.services import PortfolioService
 from ..auth.dependencies import get_current_user_optional
+from ..db.base import get_db
 from ..db.models import User
-from ..models.portfolio import Portfolio
+from ..models import (
+    ChatConfirmation,
+    ChatMessageRequest,
+    ChatResponse,
+    PortfolioSubmission,
+)
 
 logger = logging.getLogger(__name__)
 
-# Request/Response models
-class ChatMessage(BaseModel):
-    message: str
-    session_id: str | None = None
-
-
-class ChatResponse(BaseModel):
-    message: str
-    session_id: str
-    ui_hints: dict | None = None
-    show_form: bool = False
-    form_data: dict | None = None
-    portfolio_summary: dict | None = None
-
-
-class PortfolioSubmission(BaseModel):
-    session_id: str
-    portfolio: Portfolio
-    analyze_immediately: bool = True
-
-
-# Initialize agents
+# Initialize agents (in production, use dependency injection)
 chat_agent = None
 portfolio_agent = None
 
-
-def get_chat_agent():
+def get_chat_agent(db: Session | None = None):
     global chat_agent
     if chat_agent is None:
-        chat_agent = ChatAgent()
+        chat_agent = ChatAgent(db)
     return chat_agent
-
 
 def get_portfolio_agent():
     global portfolio_agent
@@ -58,33 +40,98 @@ def get_portfolio_agent():
         portfolio_agent = PortfolioAgent()
     return portfolio_agent
 
-
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
-
 
 @chat_router.post("/message", response_model=ChatResponse)
 async def send_message(
-    request: ChatMessage,
-    current_user: Annotated[User | None, Depends(get_current_user_optional)]
+    request: ChatMessageRequest,
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+    db: Annotated[Session, Depends(get_db)]
 ):
+    """
+    Send a message to the chat agent.
+
+    The agent will process the message, extract portfolio-related intents,
+    and return a response that may include a confirmation request for
+    portfolio modifications.
+    """
     try:
         logger.info(f"Received chat message: session={request.session_id}, user={current_user.id if current_user else 'anonymous'}")
-        agent = get_chat_agent()
+
+        agent = get_chat_agent(db)
         session_id = request.session_id or str(uuid.uuid4())
         user_id = str(current_user.id) if current_user else None
 
         logger.debug(f"Processing message with session_id={session_id}, user_id={user_id}")
+
         result = agent.process_message(
             session_id=session_id,
             user_message=request.message,
-            user_id=user_id
+            user_id=user_id,
+            _db=db
         )
 
         logger.info(f"Chat message processed successfully for session {session_id}")
         return ChatResponse(**result)
 
     except Exception as e:
-        logger.error(f"Chat processing failed: {e}")
+        logger.error(f"Chat processing failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        ) from e
+
+
+@chat_router.post("/confirm", response_model=dict)
+async def confirm_action(
+    request: ChatConfirmation,
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+    db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Process confirmation for a portfolio action.
+
+    This endpoint is called when the user clicks accept/reject on a
+    confirmation request in the chat interface.
+    """
+    try:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required for portfolio modifications"
+            )
+
+        logger.info(f"Processing confirmation {request.confirmation_id} for session {request.session_id}")
+
+        agent = get_chat_agent(db)
+
+        result = agent.process_confirmation(
+            confirmation_id=request.confirmation_id,
+            confirmed=request.confirmed,
+            user_id=str(current_user.id),
+            db=db
+        )
+
+        if not result["success"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get("message", "Failed to process confirmation")
+            )
+
+        # If confirmed and portfolio was updated, get the latest portfolio
+        if result.get("confirmed") and result.get("portfolio_updated"):
+            service = PortfolioService(db)
+            portfolio_summary = service.get_portfolio_summary(current_user.id)
+            result["portfolio_summary"] = portfolio_summary
+
+            logger.info(f"Portfolio updated after confirmation: {portfolio_summary.get('asset_count', 0)} assets")
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Confirmation processing failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -94,34 +141,33 @@ async def send_message(
 async def stream_chat_response(
     message: str,
     session_id: str,
-    user_id: str | None = None
+    user_id: str | None = None,
+    db: Session | None = None
 ) -> AsyncGenerator[str, None]:
     """
     Stream chat response token by token with configurable delays.
+    Includes confirmation requests if portfolio actions are detected.
     """
     try:
-        agent = get_chat_agent()
+        agent = get_chat_agent(db)
 
-        # Process the message to get the complete response
         result = agent.process_message(
             session_id=session_id,
             user_message=message,
-            user_id=user_id
+            user_id=user_id,
+            _db=db
         )
 
-        # Extract the response text
         response_text = result.get("message", "")
 
-        # Send initial metadata
-        yield f"data: {json.dumps({'type': 'metadata', **{k: v for k, v in result.items() if k != 'message'}})}\n\n"
+        metadata = {k: v for k, v in result.items() if k != "message"}
+        metadata["type"] = "metadata"
+        yield f"data: {json.dumps(metadata)}\n\n"
 
-        # Stream the response text token by token
         words = response_text.split()
         for i, word in enumerate(words):
-            # Determine delay based on punctuation
             delay = 0.1 if word.endswith(('.', '!', '?', ':')) else 0.05
 
-            # Send the word
             chunk_data = {
                 'type': 'token',
                 'content': word + (' ' if i < len(words) - 1 else ''),
@@ -130,10 +176,8 @@ async def stream_chat_response(
             }
             yield f"data: {json.dumps(chunk_data)}\n\n"
 
-            # Add delay for natural feel (20-50 tokens/sec)
             await asyncio.sleep(delay)
 
-        # Send completion signal
         yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
     except Exception as e:
@@ -147,12 +191,15 @@ async def stream_chat_response(
 
 @chat_router.post("/message/stream")
 async def send_message_stream(
-    request: ChatMessage,
-    current_user: Annotated[User | None, Depends(get_current_user_optional)]
+    request: ChatMessageRequest,
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+    db: Annotated[Session, Depends(get_db)]
 ):
     """
     Send a message to the portfolio chat agent with streaming response.
+
     Returns server-sent events for progressive text rendering.
+    Includes confirmation requests in the metadata if portfolio actions are detected.
     """
     try:
         # Generate session ID if not provided
@@ -161,100 +208,135 @@ async def send_message_stream(
 
         # Return streaming response
         return StreamingResponse(
-            stream_chat_response(request.message, session_id, user_id),
-            media_type="text/plain",
+            stream_chat_response(request.message, session_id, user_id, db),
+            media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "Cache-Control",
+                "X-Accel-Buffering": "no"
             }
         )
 
     except Exception as e:
-        logger.error(f"Streaming chat processing failed: {e}")
+        logger.error(f"Streaming chat processing failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         ) from e
 
 
-# @chat_router.post("/submit-portfolio")
-# async def submit_portfolio(
-#     submission: PortfolioSubmission,
-#     current_user: Annotated[User | None, Depends(get_current_user_optional)]
-# ):
-#     """
-#     Submit the portfolio built through chat for analysis.
-#     This is called when the user confirms their portfolio in the form.
-#     """
-#     try:
-#         chat_agent = get_chat_agent()
-#         portfolio_agent = get_portfolio_agent()
+@chat_router.post("/submit-portfolio")
+async def submit_portfolio(
+    submission: PortfolioSubmission,
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+    db: Annotated[Session, Depends(get_db)]
+):
+    """
+    Submit the portfolio built through chat for persistence and analysis.
 
-#         # Validate session exists
-#         session_portfolio = chat_agent.get_session_portfolio(submission.session_id)
-#         if not session_portfolio and not submission.portfolio.assets:
-#             raise HTTPException(
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 detail="No portfolio found for this session"
-#             )
+    This is called when the user confirms their complete portfolio in the form view.
+    """
+    try:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to save portfolio"
+            )
 
-#         # Use submitted portfolio or session portfolio
-#         portfolio_to_analyze = submission.portfolio if submission.portfolio.assets else session_portfolio
+        chat_agent = get_chat_agent(db)
+        portfolio_agent = get_portfolio_agent()
+        portfolio_service = PortfolioService(db)
 
-#         if not portfolio_to_analyze or not getattr(portfolio_to_analyze, "assets", None):
-#             raise HTTPException(
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 detail="No valid portfolio with assets found for analysis"
-#             )
+        # Validate session exists
+        session_portfolio = chat_agent.get_session_portfolio(submission.session_id)
+        if not session_portfolio and not submission.portfolio.assets:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No portfolio found for this session"
+            )
 
-#         response = {
-#             "success": True,
-#             "session_id": submission.session_id,
-#             "portfolio_received": {
-#                 "asset_count": len(portfolio_to_analyze.assets),
-#                 "asset_types": list(set(asset.type for asset in portfolio_to_analyze.assets))
-#             }
-#         }
+        # Use submitted portfolio or session portfolio
+        portfolio_to_save = submission.portfolio if submission.portfolio.assets else session_portfolio
 
-#         # Run analysis if requested
-#         if submission.analyze_immediately:
-#             analysis_result = portfolio_agent.analyze_portfolio(
-#                 portfolio=portfolio_to_analyze,
-#                 task_type="digest"
-#             )
+        if not portfolio_to_save or not getattr(portfolio_to_save, "assets", None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid portfolio with assets found"
+            )
 
-#             if analysis_result["success"]:
-#                 response["analysis"] = {
-#                     "digest": analysis_result["response"],
-#                     "recommendations": analysis_result["recommendations"],
-#                     "risk_alerts": analysis_result["risk_alerts"],
-#                     "execution_time": analysis_result["execution_time"]
-#                 }
-#             else:
-#                 response["analysis_error"] = analysis_result.get("error", "Analysis failed")
+        # Save each asset to the database
+        saved_count = 0
+        failed_count = 0
 
-#         # Clear the chat session after successful submission
-#         chat_agent.clear_session(submission.session_id)
+        for asset in portfolio_to_save.assets:
+            result = portfolio_service.add_asset(
+                user_id=current_user.id,
+                asset=asset
+            )
+            if result["success"]:
+                saved_count += 1
+            else:
+                failed_count += 1
+                logger.error(f"Failed to save asset: {asset}")
 
-#         return response
+        response = {
+            "success": saved_count > 0,
+            "session_id": submission.session_id,
+            "portfolio_saved": {
+                "assets_saved": saved_count,
+                "assets_failed": failed_count,
+                "total_assets": len(portfolio_to_save.assets)
+            }
+        }
 
-#     except Exception as e:
-#         logger.error(f"Portfolio submission failed: {e}")
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=str(e)
-#         ) from e
+        # Run analysis if requested and save was successful
+        if submission.analyze_immediately and saved_count > 0:
+            analysis_result = portfolio_agent.analyze_portfolio(
+                portfolio=portfolio_to_save,
+                task_type="digest"
+            )
 
+            if analysis_result["success"]:
+                response["analysis"] = {
+                    "digest": analysis_result["response"],
+                    "recommendations": analysis_result["recommendations"],
+                    "risk_alerts": analysis_result["risk_alerts"],
+                    "execution_time": analysis_result["execution_time"]
+                }
+            else:
+                response["analysis_error"] = analysis_result.get("error", "Analysis failed")
+
+        # Clear the chat session after successful submission
+        if saved_count > 0:
+            chat_agent.clear_session(submission.session_id)
+            logger.info(f"Portfolio saved and session cleared: {submission.session_id}")
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Portfolio submission failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        ) from e
 
 @chat_router.get("/session/{session_id}")
 async def get_session(
     session_id: str,
-    current_user: Annotated[User | None, Depends(get_current_user_optional)]
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+    db: Annotated[Session, Depends(get_db)]
 ):
+    """
+    Get the current chat session including messages and portfolio state.
+
+    Also returns the user's saved portfolio from the database if authenticated.
+    """
     try:
-        agent = get_chat_agent()
+        agent = get_chat_agent(db)
         session = agent.session_storage.get(session_id)
 
         if not session:
@@ -263,18 +345,19 @@ async def get_session(
                 detail="Session not found or expired"
             )
 
-        return {
+        response = {
             "session_id": session.session_id,
             "messages": [
                 {
                     "id": f"{i}",
                     "text": msg.content,
                     "isUser": msg.role == "user",
-                    "timestamp": msg.timestamp.isoformat()
+                    "timestamp": msg.timestamp.isoformat(),
+                    "metadata": msg.metadata
                 }
                 for i, msg in enumerate(session.messages)
             ],
-            "portfolio": {
+            "in_memory_portfolio": {
                 "assets": [asset.model_dump() for asset in session.portfolio_state.assets],
                 "asset_count": len(session.portfolio_state.assets),
                 "is_complete": session.portfolio_state.is_complete
@@ -283,61 +366,32 @@ async def get_session(
             "last_activity": session.last_activity.isoformat()
         }
 
+        # Add saved portfolio if user is authenticated
+        if current_user:
+            service = PortfolioService(db)
+            saved_portfolio = service.get_portfolio_summary(current_user.id)
+            response["saved_portfolio"] = saved_portfolio
+
+        return response
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get session: {e}")
+        logger.error(f"Failed to get session: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         ) from e
 
-
-# @chat_router.get("/session/{session_id}/portfolio")
-# async def get_session_portfolio(
-#     session_id: str,
-#     current_user: Annotated[User | None, Depends(get_current_user_optional)]
-# ):
-#     """
-#     Get the current portfolio being built in a chat session.
-#     Useful for the frontend to sync state.
-#     """
-#     try:
-#         agent = get_chat_agent()
-#         portfolio = agent.get_session_portfolio(session_id)
-
-#         if not portfolio:
-#             return {
-#                 "session_id": session_id,
-#                 "portfolio": None,
-#                 "asset_count": 0
-#             }
-
-#         return {
-#             "session_id": session_id,
-#             "portfolio": portfolio,
-#             "asset_count": len(portfolio.assets),
-#             "asset_types": list(set(asset.type for asset in portfolio.assets))
-#         }
-
-#     except Exception as e:
-#         logger.error(f"Failed to get session portfolio: {e}")
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=str(e)
-#         ) from e
-
-
 @chat_router.delete("/session/{session_id}")
 async def clear_session(
     session_id: str,
-    current_user: Annotated[User | None, Depends(get_current_user_optional)]
+    current_user: Annotated[User | None, Depends(get_current_user_optional)],
+    db: Annotated[Session, Depends(get_db)]
 ):
-    """
-    Clear a chat session and start fresh.
-    """
+    """Clear a chat session and start fresh."""
     try:
-        agent = get_chat_agent()
+        agent = get_chat_agent(db)
         agent.clear_session(session_id)
 
         return {
@@ -347,71 +401,8 @@ async def clear_session(
         }
 
     except Exception as e:
-        logger.error(f"Failed to clear session: {e}")
+        logger.error(f"Failed to clear session: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         ) from e
-
-
-# @chat_router.get("/suggestions")
-# async def get_asset_suggestions(
-#     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-#     asset_type: str | None = None
-# ):
-#     """
-#     Get common asset suggestions to help users.
-#     """
-#     suggestions = {
-#         "stock": [
-#             {"ticker": "AAPL", "name": "Apple Inc."},
-#             {"ticker": "MSFT", "name": "Microsoft Corporation"},
-#             {"ticker": "GOOGL", "name": "Alphabet Inc."},
-#             {"ticker": "AMZN", "name": "Amazon.com Inc."},
-#             {"ticker": "TSLA", "name": "Tesla, Inc."}
-#         ],
-#         "crypto": [
-#             {"symbol": "BTC", "name": "Bitcoin"},
-#             {"symbol": "ETH", "name": "Ethereum"},
-#             {"symbol": "BNB", "name": "Binance Coin"},
-#             {"symbol": "SOL", "name": "Solana"},
-#             {"symbol": "ADA", "name": "Cardano"}
-#         ],
-#         "popular_etfs": [
-#             {"ticker": "SPY", "name": "SPDR S&P 500 ETF"},
-#             {"ticker": "VOO", "name": "Vanguard S&P 500 ETF"},
-#             {"ticker": "QQQ", "name": "Invesco QQQ Trust"},
-#             {"ticker": "VTI", "name": "Vanguard Total Stock Market ETF"}
-#         ]
-#     }
-
-#     if asset_type and asset_type in suggestions:
-#         return {
-#             "asset_type": asset_type,
-#             "suggestions": suggestions[asset_type]
-#         }
-
-#     return {
-#         "all_suggestions": suggestions,
-#         "quick_start_templates": [
-#             {
-#                 "name": "Conservative Portfolio",
-#                 "description": "60% stocks, 40% bonds",
-#                 "assets": [
-#                     {"type": "stock", "ticker": "VOO", "shares": 100},
-#                     {"type": "stock", "ticker": "BND", "shares": 80},
-#                     {"type": "cash", "currency": "USD", "amount": 10000}
-#                 ]
-#             },
-#             {
-#                 "name": "Growth Portfolio",
-#                 "description": "Tech-focused with crypto allocation",
-#                 "assets": [
-#                     {"type": "stock", "ticker": "QQQ", "shares": 50},
-#                     {"type": "stock", "ticker": "TSLA", "shares": 20},
-#                     {"type": "crypto", "symbol": "BTC", "amount": 0.1},
-#                     {"type": "crypto", "symbol": "ETH", "amount": 2}
-#                 ]
-#             }
-#         ]
-#     }

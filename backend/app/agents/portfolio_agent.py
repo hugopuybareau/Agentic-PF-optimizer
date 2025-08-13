@@ -11,12 +11,10 @@ from langfuse.callback import CallbackHandler
 from langfuse.decorators import langfuse_context, observe
 from langgraph.graph import END, StateGraph
 
+from ..models import AgentState, AnalysisResult, NewsItem
 from ..models.assets import Asset
 from ..models.portfolio import Portfolio
-from .core.vector_store import VectorStore
-from .state.agent import AgentState
-from .state.analysis import AnalysisResult
-from .state.news import NewsItem
+from .services.vector_store import VectorStoreService as VectorStore
 from .tools import AnalysisTool, ClassificationTool, NewsSearchTool, PortfolioSummarizerTool
 
 logger = logging.getLogger(__name__)

@@ -89,7 +89,7 @@ def test_vector_store():
     logger.info("\n🗄️  Testing vector store...")
 
     try:
-        from backend.app.agents.core.vector_store import VectorStore
+        from backend.app.agents.services.vector_store import VectorStoreService as VectorStore
 
         vector_store = VectorStore()
         logger.info("✅ Vector store initialized successfully")

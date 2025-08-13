@@ -88,7 +88,7 @@ class PromptManager:
         if conversation_history:
             messages.extend(conversation_history)
 
-        messages.append(HumanMessage(content=user_content))
+        messages.append(HumanMessage(user_content))
 
         return messages
 

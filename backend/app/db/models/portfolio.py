@@ -1,26 +1,70 @@
-# backend/app/db/models/portfolio.py
+from __future__ import annotations
 
-import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ...db.base import Base
+from ..base import Base
+
+if TYPE_CHECKING:
+    from .alert import Alert
+    from .asset import Asset
+    from .digest import Digest
+    from .newsitem import NewsItem
+    from .user import User
 
 
 class Portfolio(Base):
     __tablename__ = "portfolios"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    name = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        nullable=False,
+    )
 
-    user = relationship("User", back_populates="portfolios")
-    alerts = relationship("Alert", back_populates="portfolio", cascade="all, delete-orphan")
-    assets = relationship("Asset", back_populates="portfolio", cascade="all, delete-orphan")
-    digests = relationship("Digest", back_populates="portfolio", cascade="all, delete-orphan")
-    news_items = relationship("NewsItem", back_populates="portfolio", cascade="all, delete-orphan")
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    user: Mapped[User] = relationship(
+        back_populates="portfolios",
+        lazy="selectin",
+    )
+    alerts: Mapped[list[Alert]] = relationship(
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    assets: Mapped[list[Asset]] = relationship(
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    digests: Mapped[list[Digest]] = relationship(
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    news_items: Mapped[list[NewsItem]] = relationship(
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )

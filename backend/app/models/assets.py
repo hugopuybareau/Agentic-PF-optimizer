@@ -1,8 +1,8 @@
-# backend/app/models/assets.py
-
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+AssetType = Literal["stock", "crypto", "real_estate", "mortgage", "cash"]
 
 
 class Stock(BaseModel):

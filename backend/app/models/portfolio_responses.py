@@ -6,24 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from .assets import Asset, AssetType
-
-
-class PortfolioAction(StrEnum):
-    ADD_ASSET = "add_asset"
-    REMOVE_ASSET = "remove_asset"
-    UPDATE_ASSET = "update_asset"
-    CLEAR_PORTFOLIO = "clear_portfolio"
-    CONFIRMATION_PROCESSED = "confirmation_processed"
-
-
-class AssetConfirmation(BaseModel):
-    type: AssetType
-    symbol: str | None = None
-    name: str | None = None
-    quantity: float
-    current_quantity: float | None = None
-    action: PortfolioAction
-    display_text: str
+from .portfolio_requests import PortfolioAction, PortfolioConfirmationRequest
 
 
 class AssetModification(BaseModel):
@@ -34,21 +17,6 @@ class AssetModification(BaseModel):
     action_performed: str = Field(description="Action that was performed (added, updated, removed)")
     display_text: str = Field(description="Human-readable description of the modification")
 
-
-class PortfolioConfirmationRequest(BaseModel):
-    confirmation_id: str = Field(description="Unique ID for this confirmation")
-    action: PortfolioAction
-    assets: list[AssetConfirmation] = Field(description="Assets involved in the action")
-    message: str = Field(description="Confirmation message to display")
-    requires_confirmation: bool = Field(default=True)
-    metadata: dict[str, Any] | None = Field(None, description="Additional context")
-
-class PortfolioConfirmationResponse(BaseModel):
-    confirmation_id: str
-    confirmed: bool
-    user_id: UUID | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
 class PortfolioSummary(BaseModel):
     exists: bool = Field(description="Whether the portfolio exists")
     asset_count: int = Field(default=0, description="Total number of assets")
@@ -56,7 +24,6 @@ class PortfolioSummary(BaseModel):
     by_type: dict[str, list[Asset]] = Field(default_factory=dict, description="Assets grouped by type")
     last_updated: str | None = Field(None, description="ISO timestamp of last update")
     error: str | None = Field(None, description="Error message if summary failed")
-
 
 class PortfolioActionResult(BaseModel):
     success: bool

@@ -11,7 +11,7 @@ from langfuse.callback import CallbackHandler
 from langfuse.decorators import langfuse_context, observe
 from langgraph.graph import END, StateGraph
 
-from ..models import AgentState, AnalysisResult, NewsItem
+from ..models import AnalysisResult, NewsItem, PortfolioAgentState
 from ..models.assets import Asset
 from ..models.portfolio import Portfolio
 from .services.vector_store import VectorStoreService as VectorStore
@@ -50,7 +50,7 @@ class PortfolioAgent:
 
     def _build_graph(self) -> StateGraph:
         logger.info("Building portfolio agent workflow graph")
-        workflow = StateGraph(AgentState)
+        workflow = StateGraph(PortfolioAgentState)
 
         workflow.add_node("initialize", self._initialize_node)
         workflow.add_node("search_vector_db", self._search_vector_db_node)
@@ -80,14 +80,14 @@ class PortfolioAgent:
         return workflow.compile() # type: ignore
 
     @observe(name="initialize_node")
-    def _initialize_node(self, state: AgentState) -> AgentState:
+    def _initialize_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info("Starting portfolio analysis - Initialize node")
         result = self._initialize_analysis_wrapped(
-            portfolio=state["portfolio"],
-            task_type=state["task_type"],
-            user_query=state.get("user_query", "") or ""
+            portfolio=state.portfolio,
+            task_type=state.task_type,
+            user_query=state.user_query if state.user_query else ""
         )
-        state["current_step"] = result.get("current_step", "initialize")
+        state.current_step = result.current_step if result.current_step else "initialize"
         state["assets_to_analyze"] = result.get("assets_to_analyze", [])
         state["processed_assets"] = result.get("processed_assets", [])
         state["raw_news"] = result.get("raw_news", [])
@@ -101,7 +101,7 @@ class PortfolioAgent:
 
     #nodes
     @observe(name="search_vector_db_node")
-    def _search_vector_db_node(self, state: AgentState) -> AgentState:
+    def _search_vector_db_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info("Searching vector database for existing information")
         result = self._search_vector_db_wrapped(
             assets=state["assets_to_analyze"],
@@ -113,7 +113,7 @@ class PortfolioAgent:
         return state
 
     @observe(name="search_news_node")
-    def _search_news_node(self, state: AgentState) -> AgentState:
+    def _search_news_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info("Starting news search for assets")
         result = self._search_news_wrapped(
             assets=state["assets_to_analyze"],
@@ -124,7 +124,7 @@ class PortfolioAgent:
         return state
 
     @observe(name="classify_news_node")
-    def _classify_news_node(self, state: AgentState) -> AgentState:
+    def _classify_news_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info(f"Classifying {len(state['raw_news'])} news items")
         result = self._classify_news_wrapped(
             news_items=state["raw_news"],
@@ -135,7 +135,7 @@ class PortfolioAgent:
         return state
 
     @observe(name="analyze_assets_node")
-    def _analyze_assets_node(self, state: AgentState) -> AgentState:
+    def _analyze_assets_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info(f"Starting detailed analysis of {len(state['assets_to_analyze'])} assets")
         result = self._analyze_assets_wrapped(
             assets=state["assets_to_analyze"],
@@ -146,7 +146,7 @@ class PortfolioAgent:
         return state
 
     @observe(name="create_digest_node")
-    def _create_digest_node(self, state: AgentState) -> AgentState:
+    def _create_digest_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info("Creating portfolio digest and final response")
         result = self._create_digest_wrapped(
             analysis_results=state["analysis_results"],
@@ -159,7 +159,7 @@ class PortfolioAgent:
         return state
 
     @observe(name="store_results_node")
-    def _store_results_node(self, state: AgentState) -> AgentState:
+    def _store_results_node(self, state: PortfolioAgentState) -> PortfolioAgentState:
         logger.info("Storing analysis results to vector database")
         self._store_results_wrapped(
             portfolio=state["portfolio"],
@@ -533,7 +533,7 @@ class PortfolioAgent:
 
     #helpers
     @observe(name="should_search_news")
-    def _should_search_news(self, state: AgentState) -> str:
+    def _should_search_news(self, state: PortfolioAgentState) -> str:
         vector_context = state.get("vector_context") or {}
         found_items = vector_context.get("found_items", 0)
         threshold = len(state["assets_to_analyze"]) * 2

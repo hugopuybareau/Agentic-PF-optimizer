@@ -1,5 +1,3 @@
-// frontend/src/components/chat/QuickActions.tsx
-
 import { useTranslation } from 'react-i18next';
 
 interface QuickAction {

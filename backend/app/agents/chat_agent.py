@@ -17,19 +17,19 @@ from ..models import (
     AssetType,
     ChatAgentState,
     ChatSession,
-    ConfirmActionRequest,
+    EntityData,
     Intent,
     Portfolio,
     PortfolioAction,
+    PortfolioActionResult,
     PortfolioConfirmationRequest,
     ResponseGenerationResponse,
     UIHints,
 )
+from ..models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from .modules import (
     EntityExtractor,
-    FormPreparer,
     IntentClassifier,
-    PortfolioOperations,
     ResponseGenerator,
     WorkflowUtils,
 )
@@ -65,16 +65,14 @@ class ChatAgent:
 
         self.intent_classifier = IntentClassifier(self.llm)
         self.entity_extractor = EntityExtractor(self.llm)
-        self.portfolio_operations = PortfolioOperations()
         self.response_generator = ResponseGenerator(self.llm)
-        self.form_preparer = FormPreparer()
         self.workflow_utils = WorkflowUtils()
 
         self.session_storage = get_session_storage()
 
         self.db = db
 
-        self.pending_confirmations: dict[str, dict] = {}
+        self.pending_confirmations: dict[str, dict[str, PortfolioConfirmationRequest | str | list[EntityData] | Intent]] = {}
 
         self.graph = self._build_graph()
 
@@ -226,48 +224,22 @@ class ChatAgent:
             "show_portfolio_summary": True
         })
 
-        confirm_action = ConfirmActionRequest(
-            confirmation_id=confirmation_request.confirmation_id,
-            confirmed=False
-        )
         return state.model_copy(update={
-            "confirmation_request": confirm_action,
+            "confirmation_request": confirmation_request,
             "ui_hints": updated_ui_hints
         })
 
     @observe(name="update_portfolio_node")
     def _update_portfolio_node(self, state: ChatAgentState) -> ChatAgentState:
-        logger.info(f"Updating in-memory portfolio based on intent: {state.intent}")
-        current_assets_count = len(state.session.portfolio_state.assets)
+        logger.info(f"Processing portfolio completion intent: {state.intent}")
+        
+        # For COMPLETE_PORTFOLIO intent, just update UI hints
+        updated_ui_hints = (state.ui_hints or UIHints()).model_copy(update={
+            "show_completion_button": True,
+            "show_portfolio_summary": True
+        })
 
-        entities_list = state.entities
-        intent = state.intent or Intent.UNCLEAR
-
-        new_ui_hints = self.portfolio_operations.update_portfolio(
-            session=state.session,
-            entities=entities_list,
-            intent=intent
-        )
-
-        updated_ui_hints = (state.ui_hints or UIHints()).model_copy()
-        if new_ui_hints.show_portfolio_summary:
-            updated_ui_hints.show_portfolio_summary = True
-        if new_ui_hints.suggest_asset_types:
-            updated_ui_hints.suggest_asset_types = True
-        if new_ui_hints.current_asset_count > 0:
-            updated_ui_hints.current_asset_count = new_ui_hints.current_asset_count
-        if new_ui_hints.show_completion_button:
-            updated_ui_hints.show_completion_button = True
-        if new_ui_hints.highlight_missing_info:
-            updated_ui_hints.highlight_missing_info = True
-
-        new_assets_count = len(state.session.portfolio_state.assets)
-
-        if new_assets_count != current_assets_count:
-            logger.info(f"In-memory portfolio updated: {current_assets_count} → {new_assets_count} assets")
-        else:
-            logger.info("Portfolio state unchanged")
-
+        logger.info("Portfolio completion UI hints updated")
         return state.model_copy(update={"ui_hints": updated_ui_hints})
 
     @observe(name="generate_response_node")
@@ -284,8 +256,7 @@ class ChatAgent:
                 session=state.session,
                 user_message=state.user_message,
                 intent=state.intent or Intent.UNCLEAR,
-                entities=state.entities,
-                portfolio_state=state.session.portfolio_state
+                entities=state.entities
             )
 
             logger.info(f"Response generated ({len(result.response)} characters)")
@@ -296,17 +267,10 @@ class ChatAgent:
 
     @observe(name="prepare_form_node")
     def _prepare_form_node(self, state: ChatAgentState) -> ChatAgentState:
-        logger.info("Preparing portfolio form for user review")
-        result = self.form_preparer.prepare_form(
-            session=state.session,
-            portfolio_state=state.session.portfolio_state
-        )
-        logger.info(f"Form prepared with {len(result.get('form_data', {}).get('assets', []))} assets")
+        logger.info("Portfolio form generation no longer needed - using direct confirmation flow")
         return state.model_copy(update={
-            "show_form": result.get("show_form", False),
-            "form_data": result.get("form_data"),
-            "response": result.get("response", ""),
-            "ui_hints": result.get("ui_hints", {})
+            "show_form": False,
+            "response": ResponseGenerationResponse(response="Portfolio action completed")
         })
 
     def _build_asset_confirmation(self, entities: dict, intent: Intent) -> AssetConfirmation | None:
@@ -453,7 +417,7 @@ class ChatAgent:
             entities=[],
             response=ResponseGenerationResponse(response=""),
             ui_hints=UIHints(),
-            confirmation_request=ConfirmActionRequest(confirmation_id="temp", confirmed=False),
+            confirmation_request=None,
             show_form=False,
             form_data=None,
             errors=[]
@@ -494,11 +458,6 @@ class ChatAgent:
                 "session_id": session_id,
                 "ui_hints": dump(result.ui_hints),
                 "show_form": result.show_form,
-                "form_data": dump(result.form_data) if result.form_data else None,
-                "portfolio_summary": {
-                    "assets": len(session.portfolio_state.assets),
-                    "is_complete": session.portfolio_state.is_complete,
-                },
                 **(
                     {
                         "confirmation_request": dump(result.confirmation_request),
@@ -514,7 +473,6 @@ class ChatAgent:
                 output=response,
                 metadata={
                     "success": True,
-                    "asset_count": len(session.portfolio_state.assets),
                     "show_form": result.show_form,
                     "intent": dump(result.intent),
                     "entities_extracted": bool(result.entities),
@@ -526,8 +484,7 @@ class ChatAgent:
             )
 
             logger.info(
-                "Message processed - Assets: %s, Confirmation: %s",
-                len(session.portfolio_state.assets),
+                "Message processed - Confirmation: %s",
                 bool(result.confirmation_request),
             )
             return response
@@ -553,37 +510,52 @@ class ChatAgent:
         confirmed: bool,
         user_id: str,
         db: Session
-    ) -> dict:
+    ) -> PortfolioActionResult:
         logger.info(f"Processing confirmation {confirmation_id}: confirmed={confirmed}")
 
         try:
             pending = self.pending_confirmations.get(confirmation_id)
             if not pending:
                 logger.warning(f"Confirmation {confirmation_id} not found")
-                return {
-                    "success": False,
-                    "message": "Confirmation request not found or expired"
-                }
+                return PortfolioActionResult(
+                    success=False,
+                    action=PortfolioAction.ADD_ASSET,
+                    message="Confirmation request not found or expired",
+                    portfolio_updated=False
+                )
 
-            # Remove from pending
             del self.pending_confirmations[confirmation_id]
 
             if not confirmed:
                 logger.info(f"Confirmation {confirmation_id} rejected by user")
-                return {
-                    "success": True,
-                    "confirmed": False,
-                    "message": "Action cancelled"
-                }
+                return PortfolioActionResult(
+                    success=True,
+                    action=PortfolioAction.ADD_ASSET,
+                    message="Action cancelled",
+                    portfolio_updated=False
+                )
 
-            # Process the confirmed action
             request = pending["request"]
             entities = pending["entities"]
 
-            # Initialize portfolio service
+            if not isinstance(request, PortfolioConfirmationRequest):
+                return PortfolioActionResult(
+                    success=False,
+                    action=PortfolioAction.ADD_ASSET,
+                    message="Invalid confirmation request format",
+                    portfolio_updated=False
+                )
+
+            if not isinstance(entities, list):
+                return PortfolioActionResult(
+                    success=False,
+                    action=request.action,
+                    message="Invalid entities format",
+                    portfolio_updated=False
+                )
+
             portfolio_service = PortfolioService(db)
 
-            # Execute the action
             result = self._execute_portfolio_action(
                 portfolio_service=portfolio_service,
                 user_id=UUID(user_id),
@@ -591,59 +563,65 @@ class ChatAgent:
                 entities=entities
             )
 
-            if result["success"]:
-                logger.info(f"Portfolio action executed successfully: {result['message']}")
+            if result.success:
+                logger.info(f"Portfolio action executed successfully: {result.message}")
 
-                # Get updated portfolio summary
                 portfolio_summary = portfolio_service.get_portfolio_summary(UUID(user_id))
 
-                return {
-                    "success": True,
-                    "confirmed": True,
-                    "message": result["message"],
-                    "portfolio_updated": True,
-                    "portfolio_summary": portfolio_summary,
-                    "action_result": result
-                }
+                return PortfolioActionResult(
+                    success=True,
+                    action=request.action,
+                    message=result.message,
+                    portfolio_updated=True,
+                    portfolio_summary=portfolio_summary
+                )
             else:
-                logger.error(f"Portfolio action failed: {result.get('error')}")
-                return {
-                    "success": False,
-                    "message": result.get("message", "Failed to update portfolio"),
-                    "error": result.get("error")
-                }
+                logger.error(f"Portfolio action failed: {result.error}")
+                return PortfolioActionResult(
+                    success=False,
+                    action=request.action,
+                    message=result.message or "Failed to update portfolio",
+                    portfolio_updated=False,
+                    error=result.error
+                )
 
         except Exception as e:
             logger.error(f"Confirmation processing failed: {e}", exc_info=True)
-            return {
-                "success": False,
-                "message": "Failed to process confirmation",
-                "error": str(e)
-            }
+            return PortfolioActionResult(
+                success=False,
+                action=PortfolioAction.ADD_ASSET,
+                message="Failed to process confirmation",
+                portfolio_updated=False,
+                error=str(e)
+            )
 
     def _execute_portfolio_action(
         self,
         portfolio_service: PortfolioService,
         user_id: UUID,
         action: PortfolioAction,
-        entities: dict
-    ) -> dict:
+        entities: list[EntityData]
+    ) -> PortfolioActionResult:
 
         try:
             primary_entity = entities[0] if entities else None
             if not primary_entity:
-                return {
-                    "success": False,
-                    "message": "No entity data provided"
-                }
+                return PortfolioActionResult(
+                    success=False,
+                    action=action,
+                    message="No entity data provided",
+                    portfolio_updated=False
+                )
 
-            asset = self.portfolio_operations._create_asset_from_entity(primary_entity)
+            asset = self._create_asset_from_entity(primary_entity)
 
             if not asset:
-                return {
-                    "success": False,
-                    "message": "Could not create asset from provided information"
-                }
+                return PortfolioActionResult(
+                    success=False,
+                    action=action,
+                    message="Could not create asset from provided information",
+                    portfolio_updated=False
+                )
 
             if action == PortfolioAction.ADD_ASSET:
                 return portfolio_service.add_asset(user_id, asset)
@@ -663,30 +641,74 @@ class ChatAgent:
                     new_quantity=quantity
                 )
             else:
-                return {
-                    "success": False,
-                    "message": f"Unknown action: {action}"
-                }
+                return PortfolioActionResult(
+                    success=False,
+                    action=action,
+                    message=f"Unknown action: {action}",
+                    portfolio_updated=False
+                )
 
         except Exception as e:
             logger.error(f"Portfolio action execution failed: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Failed to execute portfolio action: {e}"
-            }
+            return PortfolioActionResult(
+                success=False,
+                action=action,
+                message=f"Failed to execute portfolio action: {e}",
+                portfolio_updated=False,
+                error=str(e)
+            )
 
-    def get_session_portfolio(self, session_id: str) -> Portfolio | None:
-        logger.debug(f"Retrieving portfolio for session: {session_id}")
-        session = self.session_storage.get(session_id)
-        if not session:
-            logger.warning(f"No session found for ID: {session_id}")
+    def _create_asset_from_entity(self, entity: EntityData) -> Asset | None:
+        """Create an Asset object from extracted entity data."""
+        if not entity.asset_type:
             return None
 
-        if session.portfolio_state.assets:
-            logger.info(f"Found portfolio with {len(session.portfolio_state.assets)} assets for session {session_id}")
-            return Portfolio(assets=session.portfolio_state.assets)
-        logger.info(f"No assets found in portfolio for session {session_id}")
+        asset_type = entity.asset_type.lower()
+
+        try:
+            if asset_type == "stock":
+                if entity.ticker and entity.shares:
+                    return Stock(
+                        ticker=entity.ticker.upper(),
+                        shares=float(entity.shares)
+                    )
+
+            elif asset_type in ["crypto", "cryptocurrency"]:
+                if entity.symbol and entity.amount:
+                    return Crypto(
+                        symbol=entity.symbol.upper(),
+                        amount=float(entity.amount)
+                    )
+
+            elif asset_type in ["real_estate", "realestate", "property"]:
+                if entity.address and entity.market_value:
+                    return RealEstate(
+                        address=entity.address,
+                        market_value=float(entity.market_value)
+                    )
+
+            elif asset_type == "mortgage":
+                if entity.lender and entity.balance:
+                    return Mortgage(
+                        lender=entity.lender,
+                        balance=float(entity.balance),
+                        property_address=getattr(entity, 'property_address', None)
+                    )
+
+            elif asset_type == "cash":
+                if entity.amount:
+                    return Cash(
+                        currency=entity.currency or "USD",
+                        amount=float(entity.amount)
+                    )
+
+        except (ValueError, TypeError) as e:
+            logger.error(f"Asset creation failed: {e}")
+
+        return None
+
+    def get_session_portfolio(self, session_id: str) -> Portfolio | None:
+        logger.debug(f"Portfolio state removed from sessions - no in-memory portfolio available for session: {session_id}")
         return None
 
     def clear_session(self, session_id: str):

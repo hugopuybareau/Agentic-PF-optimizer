@@ -3,35 +3,46 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigation } from '@/components/Navigation';
-import { 
-    ChatHeader, 
-    ChatMessages, 
-    ScrollToBottomButton, 
-    QuickActions, 
-    ChatInput 
+import {
+    ChatHeader,
+    ChatMessages,
+    QuickActions,
+    ChatInput,
 } from '@/components/chat';
+import LivePortfolioView from '@/components/chat/LivePortfolioView';
 import { chatApi, ApiError } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useStreamingText } from '@/hooks/useStreamingText';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { useChatSession } from '@/hooks/useChatSession';
+import { usePortfolio } from '@/hooks/usePortfolio';
 
 export default function Chat() {
     const { t } = useTranslation();
     const { toast } = useToast();
     const [inputValue, setInputValue] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [processingConfirmation, setProcessingConfirmation] = useState<
+        string | null
+    >(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Custom hooks
-    const { 
-        messages, 
-        setMessages, 
-        sessionId, 
-        setSessionId, 
-        isLoadingSession, 
-        clearSession: clearSessionData 
+    const {
+        messages,
+        setMessages,
+        sessionId,
+        setSessionId,
+        isLoadingSession,
+        clearSession: clearSessionData,
     } = useChatSession(t);
+
+    const {
+        portfolioSummary,
+        isLoading: isLoadingPortfolio,
+        fetchPortfolio,
+        confirmAction: confirmPortfolioAction,
+    } = usePortfolio();
 
     const {
         messagesEndRef,
@@ -54,7 +65,12 @@ export default function Chat() {
             setMessages((prev) =>
                 prev.map((msg) =>
                     msg.id === aiMessageId
-                        ? { ...msg, text: fullText, isStreaming: false }
+                        ? {
+                              ...msg,
+                              text: fullText,
+                              isStreaming: false,
+                              metadata: responseMetadata,
+                          }
                         : msg
                 )
             );
@@ -66,16 +82,29 @@ export default function Chat() {
                 ) {
                     setSessionId(responseMetadata.session_id);
                 }
-                if (responseMetadata.show_form && responseMetadata.form_data) {
+
+                // Handle confirmation requests
+                if (responseMetadata.confirmation_request) {
                     console.log(
-                        'Portfolio form data:',
-                        responseMetadata.form_data
+                        'Confirmation request received:',
+                        responseMetadata.confirmation_request
                     );
                 }
+
+                // Handle portfolio updates
                 if (responseMetadata.portfolio_summary) {
                     console.log(
                         'Portfolio summary:',
                         responseMetadata.portfolio_summary
+                    );
+                    // Refresh portfolio view
+                    fetchPortfolio();
+                }
+
+                if (responseMetadata.show_form && responseMetadata.form_data) {
+                    console.log(
+                        'Portfolio form data:',
+                        responseMetadata.form_data
                     );
                 }
             }
@@ -116,7 +145,7 @@ export default function Chat() {
         const messageText = inputValue;
         setInputValue('');
         setError(null);
-        
+
         // Reset scroll state when sending a new message
         resetScrollState();
 
@@ -163,19 +192,31 @@ export default function Chat() {
                                   ...msg,
                                   text: response.message,
                                   isStreaming: false,
+                                  metadata: {
+                                      confirmation_request:
+                                          response.confirmation_request,
+                                      ui_hints: response.ui_hints,
+                                  },
                               }
                             : msg
                     )
                 );
 
+                // Handle confirmation requests
+                if (response.confirmation_request) {
+                    console.log(
+                        'Confirmation request:',
+                        response.confirmation_request
+                    );
+                }
+
+                // Refresh portfolio if updated
+                if (response.portfolio_summary) {
+                    fetchPortfolio();
+                }
+
                 if (response.show_form && response.form_data) {
                     console.log('Portfolio form data:', response.form_data);
-                }
-                if (response.portfolio_summary) {
-                    console.log(
-                        'Portfolio summary:',
-                        response.portfolio_summary
-                    );
                 }
             } catch (fallbackErr) {
                 const errorMessage =
@@ -196,9 +237,59 @@ export default function Chat() {
         }
     };
 
+    const handleConfirmAction = async (
+        confirmationId: string,
+        confirmed: boolean
+    ) => {
+        setProcessingConfirmation(confirmationId);
+
+        try {
+            const success = await confirmPortfolioAction(
+                confirmationId,
+                confirmed,
+                sessionId || undefined
+            );
+
+            if (success) {
+                // Remove confirmation from message metadata
+                setMessages((prev) =>
+                    prev.map((msg) => {
+                        if (
+                            msg.metadata?.confirmation_request
+                                ?.confirmation_id === confirmationId
+                        ) {
+                            return {
+                                ...msg,
+                                metadata: {
+                                    ...msg.metadata,
+                                    confirmation_request: null,
+                                    confirmation_processed: true,
+                                },
+                            };
+                        }
+                        return msg;
+                    })
+                );
+
+                // Add a system message about the confirmation
+                const systemMessage = {
+                    id: crypto.randomUUID(),
+                    text: confirmed
+                        ? '✅ Portfolio updated successfully!'
+                        : '❌ Action cancelled',
+                    isUser: false,
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, systemMessage]);
+            }
+        } finally {
+            setProcessingConfirmation(null);
+        }
+    };
+
     const handleClearSession = async () => {
         const result = await clearSessionData();
-        
+
         if (result.success) {
             setError(null);
             resetScrollState();
@@ -248,41 +339,59 @@ export default function Chat() {
             <Navigation />
 
             <main className="pt-20 px-6 pb-6">
-                <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col relative">
-                    <ChatHeader error={error} />
+                <div className="max-w-7xl mx-auto flex gap-6">
+                    {/* Chat Section */}
+                    <div className="flex-1 h-[calc(100vh-8rem)] flex flex-col relative">
+                        <ChatHeader error={error} />
 
-                    <ChatMessages
-                        ref={messagesContainerRef}
-                        messages={messages}
-                        isLoadingSession={isLoadingSession}
-                        streamedText={streamedText}
-                        isThinking={isThinking}
-                        isStreaming={isStreaming}
-                        onCancelStream={cancelStream}
-                        messagesEndRef={messagesEndRef}
-                        userScrolled={userScrolled}
-                        showScrollButton={showScrollButton}
-                    />
+                        <ChatMessages
+                            ref={messagesContainerRef}
+                            messages={messages}
+                            isLoadingSession={isLoadingSession}
+                            streamedText={streamedText}
+                            isThinking={isThinking}
+                            isStreaming={isStreaming}
+                            onCancelStream={cancelStream}
+                            onConfirmAction={handleConfirmAction}
+                            processingConfirmation={processingConfirmation}
+                            messagesEndRef={messagesEndRef}
+                            userScrolled={userScrolled}
+                            showScrollButton={showScrollButton}
+                        />
 
-                    <ScrollToBottomButton 
-                        show={showScrollButton} 
-                        onClick={scrollToBottom} 
-                    />
+                        <QuickActions
+                            actions={quickActions}
+                            sessionId={sessionId}
+                            onClearSession={handleClearSession}
+                        />
 
-                    <QuickActions
-                        actions={quickActions}
-                        sessionId={sessionId}
-                        onClearSession={handleClearSession}
-                    />
+                        <ChatInput
+                            inputValue={inputValue}
+                            onInputChange={setInputValue}
+                            onSendMessage={handleSendMessage}
+                            onFileUpload={handleFileUpload}
+                            isStreaming={isStreaming}
+                            fileInputRef={fileInputRef}
+                        />
+                    </div>
 
-                    <ChatInput
-                        inputValue={inputValue}
-                        onInputChange={setInputValue}
-                        onSendMessage={handleSendMessage}
-                        onFileUpload={handleFileUpload}
-                        isStreaming={isStreaming}
-                        fileInputRef={fileInputRef}
-                    />
+                    {/* Live Portfolio View */}
+                    <div className="w-96 hidden lg:block">
+                        <div className="sticky top-24">
+                            <LivePortfolioView
+                                portfolioSummary={portfolioSummary}
+                                isLoading={isLoadingPortfolio}
+                                onRefresh={fetchPortfolio}
+                                onAddAsset={() =>
+                                    setInputValue(
+                                        'I want to add an asset to my portfolio'
+                                    )
+                                }
+                                isExpanded={true}
+                                className="h-[calc(100vh-10rem)]"
+                            />
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>

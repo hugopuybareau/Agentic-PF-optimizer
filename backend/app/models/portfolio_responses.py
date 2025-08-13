@@ -5,110 +5,34 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from .assets import AssetType
+from .assets import Asset, AssetType
+from .portfolio_requests import PortfolioAction, PortfolioConfirmationRequest
 
 
-class PortfolioAction(StrEnum):
-    ADD_ASSET = "add_asset"
-    REMOVE_ASSET = "remove_asset"
-    UPDATE_ASSET = "update_asset"
-    CLEAR_PORTFOLIO = "clear_portfolio"
-    CONFIRMATION_PROCESSED = "confirmation_processed"
+class AssetModification(BaseModel):
+    asset_type: AssetType = Field(description="Type of asset that was modified")
+    symbol: str = Field(description="Asset symbol/identifier")
+    previous_quantity: float | None = Field(None, description="Quantity before modification")
+    new_quantity: float = Field(description="Quantity after modification")
+    action_performed: str = Field(description="Action that was performed (added, updated, removed)")
+    display_text: str = Field(description="Human-readable description of the modification")
 
-
-class AssetConfirmation(BaseModel):
-    type: AssetType
-    symbol: str | None = Field(None, description="Ticker/Symbol for stocks/crypto")
-    name: str | None = Field(None, description="Human-readable name")
-    quantity: float = Field(description="Amount/shares to add/remove")
-    current_quantity: float | None = Field(None, description="Current quantity in portfolio")
-    action: PortfolioAction
-    display_text: str = Field(description="Formatted text for display")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "type": "stock",
-                "symbol": "AAPL",
-                "name": "Apple Inc.",
-                "quantity": 100,
-                "current_quantity": 50,
-                "action": "add_asset",
-                "display_text": "Add 100 shares of AAPL (Apple Inc.)"
-            }
-        }
-
-
-class PortfolioConfirmationRequest(BaseModel):
-    confirmation_id: str = Field(description="Unique ID for this confirmation")
-    action: PortfolioAction
-    assets: list[AssetConfirmation] = Field(description="Assets involved in the action")
-    message: str = Field(description="Confirmation message to display")
-    requires_confirmation: bool = Field(default=True)
-    metadata: dict[str, Any] | None = Field(None, description="Additional context")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "confirmation_id": "conf_abc123",
-                "action": "add_asset",
-                "assets": [{
-                    "type": "stock",
-                    "symbol": "AAPL",
-                    "quantity": 100,
-                    "action": "add_asset",
-                    "display_text": "100 shares of AAPL"
-                }],
-                "message": "Would you like to add 100 shares of AAPL to your portfolio?",
-                "requires_confirmation": True
-            }
-        }
-
-
-class PortfolioConfirmationResponse(BaseModel):
-    confirmation_id: str
-    confirmed: bool
-    user_id: UUID | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "confirmation_id": "conf_abc123",
-                "confirmed": True,
-                "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "timestamp": "2024-01-15T10:30:00Z"
-            }
-        }
-
+class PortfolioSummary(BaseModel):
+    exists: bool = Field(description="Whether the portfolio exists")
+    asset_count: int = Field(default=0, description="Total number of assets")
+    assets: list[Asset] = Field(default_factory=list, description="List of assets in portfolio")
+    by_type: dict[str, list[Asset]] = Field(default_factory=dict, description="Assets grouped by type")
+    last_updated: str | None = Field(None, description="ISO timestamp of last update")
+    error: str | None = Field(None, description="Error message if summary failed")
 
 class PortfolioActionResult(BaseModel):
     success: bool
     action: PortfolioAction
     message: str
     portfolio_updated: bool = Field(description="Whether the portfolio was modified")
-    assets_affected: list[dict[str, Any]] = Field(default_factory=list)
-    portfolio_summary: dict[str, Any] | None = None
+    assets_modified: list[AssetModification] = Field(default_factory=list, description="Assets that were modified")
+    portfolio_summary: PortfolioSummary | None = None
     error: str | None = None
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "action": "add_asset",
-                "message": "Successfully added 100 shares of AAPL to your portfolio",
-                "portfolio_updated": True,
-                "assets_affected": [{
-                    "symbol": "AAPL",
-                    "type": "stock",
-                    "quantity": 100
-                }],
-                "portfolio_summary": {
-                    "total_assets": 5,
-                    "asset_types": ["stock", "crypto", "cash"]
-                }
-            }
-        }
 
 
 class ChatPortfolioUpdate(BaseModel):
@@ -123,27 +47,6 @@ class ChatPortfolioUpdate(BaseModel):
         description="Current portfolio state after update"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": "sess_xyz789",
-                "confirmation_request": {
-                    "confirmation_id": "conf_abc123",
-                    "action": "add_asset",
-                    "assets": [{
-                        "type": "stock",
-                        "symbol": "AAPL",
-                        "quantity": 100,
-                        "action": "add_asset",
-                        "display_text": "100 shares of AAPL"
-                    }],
-                    "message": "Add 100 shares of AAPL?",
-                    "requires_confirmation": True
-                },
-                "immediate_action": False
-            }
-        }
-
 
 class PortfolioSnapshot(BaseModel):
     portfolio_id: UUID
@@ -154,33 +57,6 @@ class PortfolioSnapshot(BaseModel):
     asset_types: list[str]
     last_updated: datetime
     metadata: dict[str, Any] | None = None
-
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "portfolio_id": "456e7890-e89b-12d3-a456-426614174000",
-                "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "name": "Main Portfolio",
-                "assets": [
-                    {
-                        "type": "stock",
-                        "symbol": "AAPL",
-                        "quantity": 100,
-                        "display": "AAPL (100 shares)"
-                    },
-                    {
-                        "type": "crypto",
-                        "symbol": "BTC",
-                        "quantity": 0.5,
-                        "display": "BTC (0.5)"
-                    }
-                ],
-                "total_assets": 2,
-                "asset_types": ["stock", "crypto"],
-                "last_updated": "2024-01-15T10:30:00Z"
-            }
-        }
 
 
 class PortfolioEventType(StrEnum):
@@ -199,25 +75,3 @@ class PortfolioEvent(BaseModel):
     session_id: str | None = None
     data: dict[str, Any]
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "event_type": "asset_added",
-                "portfolio_id": "456e7890-e89b-12d3-a456-426614174000",
-                "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "session_id": "sess_xyz789",
-                "data": {
-                    "asset": {
-                        "type": "stock",
-                        "symbol": "AAPL",
-                        "quantity": 100
-                    },
-                    "action": "added",
-                    "portfolio_summary": {
-                        "total_assets": 5
-                    }
-                },
-                "timestamp": "2024-01-15T10:30:00Z"
-            }
-        }

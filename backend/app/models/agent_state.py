@@ -7,8 +7,8 @@ from .analysis import AnalysisResult, NewsItem
 from .assets import Asset
 from .chat import ChatSession
 from .portfolio import Portfolio
-from .portfolio_requests import ConfirmActionRequest
-from .responses import EntityData, Intent, PortfolioFormData, ResponseGenerationResponse, UIHints
+from .portfolio_requests import PortfolioConfirmationRequest
+from .responses import EntityData, Intent, ResponseGenerationResponse, UIHints
 
 
 class ChatAgentState(BaseModel):
@@ -19,13 +19,12 @@ class ChatAgentState(BaseModel):
     entities: list[EntityData] = Field(default_factory=list)
     response: ResponseGenerationResponse | None = None
     ui_hints: UIHints | None = None
-    confirmation_request: ConfirmActionRequest | None = None
+    confirmation_request: PortfolioConfirmationRequest | None = None
     show_form: bool = False
-    form_data: PortfolioFormData | None = None
     errors: list[str] = Field(default_factory=list)
 
 
-class AgentState(BaseModel):
+class PortfolioAgentState(BaseModel):
     portfolio: Portfolio
     user_query: str | None
     task_type: str

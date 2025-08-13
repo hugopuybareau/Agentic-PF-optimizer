@@ -11,8 +11,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..base import Base
 
 if TYPE_CHECKING:
-    from .asset import Asset
-    from .portfolio import Portfolio
+    from .asset import DBAsset
+    from .portfolio import DBPortfolio
 
 
 class NewsItem(Base):
@@ -57,10 +57,10 @@ class NewsItem(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    portfolio: Mapped[Portfolio] = relationship(
+    portfolio: Mapped[DBPortfolio] = relationship(
         back_populates="news_items",
         lazy="selectin",
     )
-    asset: Mapped[Asset | None] = relationship(
+    asset: Mapped[DBAsset | None] = relationship(
         lazy="selectin",
     )

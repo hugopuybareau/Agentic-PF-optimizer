@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..base import Base
 
 if TYPE_CHECKING:
-    from .portfolio import Portfolio
+    from .portfolio import DBPortfolio
 
 
 class Digest(Base):
@@ -41,7 +41,7 @@ class Digest(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    portfolio: Mapped[Portfolio] = relationship(
+    portfolio: Mapped[DBPortfolio] = relationship(
         back_populates="digests",
         lazy="selectin",
     )

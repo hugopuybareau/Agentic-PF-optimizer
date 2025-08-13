@@ -1,5 +1,3 @@
-// frontend/src/components/chat/ChatHeader.tsx
-
 import { useTranslation } from 'react-i18next';
 
 interface ChatHeaderProps {

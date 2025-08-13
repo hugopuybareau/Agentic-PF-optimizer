@@ -1,5 +1,3 @@
-// frontend/src/components/chat/ChatInput.tsx
-
 import { RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 

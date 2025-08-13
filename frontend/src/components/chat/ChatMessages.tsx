@@ -1,8 +1,7 @@
-// frontend/src/components/chat/ChatMessages.tsx
-
 import { RefObject, forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StreamingMessage } from '@/components/StreamingMessage';
+import PortfolioConfirmation from '@/components/chat/PortfolioConfirmation';
 
 export type Message = {
     id: string;
@@ -10,6 +9,10 @@ export type Message = {
     isUser: boolean;
     timestamp: Date;
     isStreaming?: boolean;
+    metadata?: {
+        confirmation_request?: any;
+        ui_hints?: any;
+    };
 };
 
 interface ChatMessagesProps {
@@ -19,6 +22,8 @@ interface ChatMessagesProps {
     isThinking: boolean;
     isStreaming: boolean;
     onCancelStream: () => void;
+    onConfirmAction?: (confirmationId: string, confirmed: boolean) => void;
+    processingConfirmation?: string | null;
     messagesEndRef: RefObject<HTMLDivElement>;
     userScrolled: boolean;
     showScrollButton: boolean;
@@ -32,6 +37,8 @@ export const ChatMessages = forwardRef<HTMLDivElement, ChatMessagesProps>(
         isThinking,
         isStreaming,
         onCancelStream,
+        onConfirmAction,
+        processingConfirmation,
         messagesEndRef,
         userScrolled,
         showScrollButton,
@@ -56,14 +63,15 @@ export const ChatMessages = forwardRef<HTMLDivElement, ChatMessagesProps>(
                         // Handle streaming AI messages
                         if (!message.isUser && message.isStreaming) {
                             return (
-                                <StreamingMessage
-                                    key={message.id}
-                                    text={streamedText}
-                                    isThinking={isThinking}
-                                    isStreaming={isStreaming}
-                                    timestamp={message.timestamp}
-                                    onCancel={onCancelStream}
-                                />
+                                <div key={message.id}>
+                                    <StreamingMessage
+                                        text={streamedText}
+                                        isThinking={isThinking}
+                                        isStreaming={isStreaming}
+                                        timestamp={message.timestamp}
+                                        onCancel={onCancelStream}
+                                    />
+                                </div>
                             );
                         }
 
@@ -92,15 +100,25 @@ export const ChatMessages = forwardRef<HTMLDivElement, ChatMessagesProps>(
                             );
                         }
 
-                        // Handle regular AI messages
+                        // Handle regular AI messages with potential confirmation requests
                         return (
-                            <StreamingMessage
-                                key={message.id}
-                                text={message.text}
-                                isThinking={false}
-                                isStreaming={false}
-                                timestamp={message.timestamp}
-                            />
+                            <div key={message.id}>
+                                <StreamingMessage
+                                    text={message.text}
+                                    isThinking={false}
+                                    isStreaming={false}
+                                    timestamp={message.timestamp}
+                                />
+                                
+                                {/* Show confirmation component if present in metadata */}
+                                {message.metadata?.confirmation_request && onConfirmAction && (
+                                    <PortfolioConfirmation
+                                        confirmationRequest={message.metadata.confirmation_request}
+                                        onConfirm={onConfirmAction}
+                                        isProcessing={processingConfirmation === message.metadata.confirmation_request.confirmation_id}
+                                    />
+                                )}
+                            </div>
                         );
                     })}
                     <div ref={messagesEndRef} />

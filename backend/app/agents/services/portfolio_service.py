@@ -7,18 +7,28 @@ from langfuse.decorators import observe
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from ...db.models import Asset as DBAsset, Portfolio as DBPortfolio, User
-from ...models import Asset, Cash, Crypto, Mortgage, Portfolio, RealEstate, Stock
+from ...db.models import DBAsset, DBPortfolio, User
+from ...models import (
+    Asset,
+    AssetModification,
+    Cash,
+    Crypto,
+    Mortgage,
+    Portfolio,
+    PortfolioAction,
+    PortfolioActionResult,
+    PortfolioSummary,
+    RealEstate,
+    Stock,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class PortfolioService:
-    """Service layer for portfolio operations with database persistence."""
-
     def __init__(self, db: Session):
         self.db = db
-        logger.debug("PortfolioService initialized with database session")
+        logger.debug("PortfolioService for DB actions initialized with database session")
 
     @observe(name="get_or_create_portfolio")
     def get_or_create_portfolio(
@@ -26,24 +36,12 @@ class PortfolioService:
         user_id: UUID,
         portfolio_name: str = "Main Portfolio"
     ) -> DBPortfolio:
-        """
-        Get existing portfolio or create a new one for the user.
-
-        Args:
-            user_id: User's UUID
-            portfolio_name: Name of the portfolio
-
-        Returns:
-            Database portfolio object
-        """
         try:
-            # Check if user exists
             user = self.db.query(User).filter(User.id == user_id).first()
             if not user:
                 logger.error(f"User {user_id} not found")
                 raise ValueError(f"User {user_id} not found")
 
-            # Get or create portfolio
             portfolio = (
                 self.db.query(DBPortfolio)
                 .filter(
@@ -81,25 +79,12 @@ class PortfolioService:
         user_id: UUID,
         asset: Asset,
         portfolio_name: str = "Main Portfolio"
-    ) -> dict[str, Any]:
-        """
-        Add an asset to the user's portfolio.
-
-        Args:
-            user_id: User's UUID
-            asset: Asset object to add
-            portfolio_name: Target portfolio name
-
-        Returns:
-            Result dictionary with success status and details
-        """
+    ) -> PortfolioActionResult:
         try:
             portfolio = self.get_or_create_portfolio(user_id, portfolio_name)
 
-            # Prepare asset data
             symbol, asset_type, quantity, meta = self._prepare_asset_data(asset)
 
-            # Check if asset already exists
             existing_asset = (
                 self.db.query(DBAsset)
                 .filter(
@@ -113,7 +98,6 @@ class PortfolioService:
             )
 
             if existing_asset:
-                # Update existing asset quantity
                 old_quantity = float(existing_asset.quantity)
                 existing_asset.quantity = float(existing_asset.quantity) + quantity
                 existing_asset.last_updated = datetime.utcnow()
@@ -122,7 +106,6 @@ class PortfolioService:
                     f"Updated {asset_type} {symbol}: {old_quantity} -> {existing_asset.quantity}"
                 )
             else:
-                # Create new asset
                 db_asset = DBAsset(
                     portfolio_id=portfolio.id,
                     symbol=symbol,
@@ -136,29 +119,34 @@ class PortfolioService:
 
             self.db.commit()
 
-            result = {
-                "success": True,
-                "action": action,
-                "asset": {
-                    "symbol": symbol,
-                    "type": asset_type,
-                    "quantity": quantity
-                },
-                "portfolio_id": str(portfolio.id),
-                "message": f"Successfully {action} {symbol} to portfolio"
-            }
+            result = PortfolioActionResult(
+                success=True,
+                action=PortfolioAction.ADD_ASSET,
+                message=f"Successfully {action} {symbol} to portfolio",
+                portfolio_updated=True,
+                assets_modified=[AssetModification(
+                    asset_type=asset_type,  # type: ignore
+                    symbol=symbol,
+                    previous_quantity=old_quantity if existing_asset else None,
+                    new_quantity=quantity if not existing_asset else float(existing_asset.quantity),
+                    action_performed=action,
+                    display_text=f"{action.title()} {symbol}: {quantity} {asset_type}"
+                )]
+            )
 
-            logger.info(f"Asset operation successful: {result['message']}")
+            logger.info(f"Asset operation successful: {result.message}")
             return result
 
         except Exception as e:
             logger.error(f"Failed to add asset: {e}", exc_info=True)
             self.db.rollback()
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Failed to add asset: {e}"
-            }
+            return PortfolioActionResult(
+                success=False,
+                action=PortfolioAction.ADD_ASSET,
+                message=f"Failed to add asset: {e}",
+                portfolio_updated=False,
+                error=str(e)
+            )
 
     @observe(name="remove_asset_from_portfolio")
     def remove_asset(
@@ -168,7 +156,7 @@ class PortfolioService:
         asset_type: str,
         quantity: float | None = None,
         portfolio_name: str = "Main Portfolio"
-    ) -> dict[str, Any]:
+    ) -> PortfolioActionResult:
         """
         Remove an asset or reduce its quantity in the portfolio.
 
@@ -199,10 +187,12 @@ class PortfolioService:
 
             if not asset:
                 logger.warning(f"Asset {symbol} not found in portfolio")
-                return {
-                    "success": False,
-                    "message": f"Asset {symbol} not found in portfolio"
-                }
+                return PortfolioActionResult(
+                    success=False,
+                    action=PortfolioAction.REMOVE_ASSET,
+                    message=f"Asset {symbol} not found in portfolio",
+                    portfolio_updated=False
+                )
 
             current_quantity = float(asset.quantity)
 
@@ -222,28 +212,31 @@ class PortfolioService:
 
             self.db.commit()
 
-            return {
-                "success": True,
-                "action": action,
-                "asset": {
-                    "symbol": symbol,
-                    "type": asset_type,
-                    "previous_quantity": current_quantity,
-                    "removed_quantity": quantity or current_quantity,
-                    "remaining_quantity": remaining
-                },
-                "portfolio_id": str(portfolio.id),
-                "message": f"Successfully {action} {symbol}"
-            }
+            return PortfolioActionResult(
+                success=True,
+                action=PortfolioAction.REMOVE_ASSET,
+                message=f"Successfully {action} {symbol}",
+                portfolio_updated=True,
+                assets_modified=[AssetModification(
+                    asset_type=asset_type,  # type: ignore
+                    symbol=symbol,
+                    previous_quantity=current_quantity,
+                    new_quantity=remaining,
+                    action_performed=action,
+                    display_text=f"{action.title()} {symbol}: {current_quantity} -> {remaining} {asset_type}"
+                )]
+            )
 
         except Exception as e:
             logger.error(f"Failed to remove asset: {e}", exc_info=True)
             self.db.rollback()
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Failed to remove asset: {e}"
-            }
+            return PortfolioActionResult(
+                success=False,
+                action=PortfolioAction.REMOVE_ASSET,
+                message=f"Failed to remove asset: {e}",
+                portfolio_updated=False,
+                error=str(e)
+            )
 
     @observe(name="update_asset_in_portfolio")
     def update_asset(
@@ -253,7 +246,7 @@ class PortfolioService:
         asset_type: str,
         new_quantity: float,
         portfolio_name: str = "Main Portfolio"
-    ) -> dict[str, Any]:
+    ) -> PortfolioActionResult:
         """
         Update an asset's quantity in the portfolio.
 
@@ -284,10 +277,12 @@ class PortfolioService:
 
             if not asset:
                 logger.warning(f"Asset {symbol} not found for update")
-                return {
-                    "success": False,
-                    "message": f"Asset {symbol} not found in portfolio"
-                }
+                return PortfolioActionResult(
+                    success=False,
+                    action=PortfolioAction.UPDATE_ASSET,
+                    message=f"Asset {symbol} not found in portfolio",
+                    portfolio_updated=False
+                )
 
             old_quantity = float(asset.quantity)
             asset.quantity = new_quantity
@@ -297,27 +292,31 @@ class PortfolioService:
 
             logger.info(f"Updated {symbol}: {old_quantity} -> {new_quantity}")
 
-            return {
-                "success": True,
-                "action": "updated",
-                "asset": {
-                    "symbol": symbol,
-                    "type": asset_type,
-                    "previous_quantity": old_quantity,
-                    "new_quantity": new_quantity
-                },
-                "portfolio_id": str(portfolio.id),
-                "message": f"Successfully updated {symbol} quantity"
-            }
+            return PortfolioActionResult(
+                success=True,
+                action=PortfolioAction.UPDATE_ASSET,
+                message=f"Successfully updated {symbol} quantity",
+                portfolio_updated=True,
+                assets_modified=[AssetModification(
+                    asset_type=asset_type,  # type: ignore
+                    symbol=symbol,
+                    previous_quantity=old_quantity,
+                    new_quantity=new_quantity,
+                    action_performed="updated",
+                    display_text=f"Updated {symbol}: {old_quantity} -> {new_quantity} {asset_type}"
+                )]
+            )
 
         except Exception as e:
             logger.error(f"Failed to update asset: {e}", exc_info=True)
             self.db.rollback()
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Failed to update asset: {e}"
-            }
+            return PortfolioActionResult(
+                success=False,
+                action=PortfolioAction.UPDATE_ASSET,
+                message=f"Failed to update asset: {e}",
+                portfolio_updated=False,
+                error=str(e)
+            )
 
     @observe(name="get_portfolio")
     def get_portfolio(
@@ -370,7 +369,7 @@ class PortfolioService:
         self,
         user_id: UUID,
         portfolio_name: str = "Main Portfolio"
-    ) -> dict[str, Any]:
+    ) -> PortfolioSummary:
         """
         Get a summary of the user's portfolio.
 
@@ -385,39 +384,46 @@ class PortfolioService:
             portfolio = self.get_portfolio(user_id, portfolio_name)
 
             if not portfolio:
-                return {
-                    "exists": False,
-                    "asset_count": 0,
-                    "assets": []
-                }
+                return PortfolioSummary(
+                    exists=False,
+                    asset_count=0,
+                    assets=[],
+                    by_type={},
+                    last_updated=None,
+                    error=None
+                )
 
             # Group assets by type
-            by_type: dict[str, list[dict]] = {}
+            by_type: dict[str, list[Asset]] = {}
             for asset in portfolio.assets:
                 asset_type = asset.type
                 if asset_type not in by_type:
                     by_type[asset_type] = []
 
-                asset_dict = self._asset_to_summary_dict(asset)
-                by_type[asset_type].append(asset_dict)
+                by_type[asset_type].append(asset)
 
-            summary = {
-                "exists": True,
-                "asset_count": len(portfolio.assets),
-                "assets": [self._asset_to_summary_dict(a) for a in portfolio.assets],
-                "by_type": by_type,
-                "last_updated": datetime.utcnow().isoformat()
-            }
+            summary = PortfolioSummary(
+                exists=True,
+                asset_count=len(portfolio.assets),
+                assets=portfolio.assets,
+                by_type=by_type,
+                last_updated=datetime.utcnow().isoformat(),
+                error=None
+            )
 
             logger.debug(f"Generated portfolio summary for user {user_id}")
             return summary
 
         except Exception as e:
             logger.error(f"Failed to get portfolio summary: {e}", exc_info=True)
-            return {
-                "exists": False,
-                "error": str(e)
-            }
+            return PortfolioSummary(
+                exists=False,
+                asset_count=0,
+                assets=[],
+                by_type={},
+                last_updated=None,
+                error=str(e)
+            )
 
     def _prepare_asset_data(self, asset: Asset) -> tuple[str, str, float, dict]:
         """Convert Asset model to database fields."""

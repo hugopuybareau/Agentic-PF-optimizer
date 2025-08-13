@@ -324,11 +324,6 @@ async def get_session(
                 }
                 for i, msg in enumerate(session.messages)
             ],
-            "in_memory_portfolio": {
-                "assets": [asset.model_dump() for asset in session.portfolio_state.assets],
-                "asset_count": len(session.portfolio_state.assets),
-                "is_complete": session.portfolio_state.is_complete
-            } if session.portfolio_state.assets else None,
             "created_at": session.created_at.isoformat(),
             "last_activity": session.last_activity.isoformat()
         }

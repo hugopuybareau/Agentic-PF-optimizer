@@ -8,7 +8,7 @@ from .assets import Asset
 from .chat import ChatSession
 from .portfolio import Portfolio
 from .portfolio_requests import PortfolioConfirmationRequest
-from .responses import EntityData, Intent, PortfolioFormData, ResponseGenerationResponse, UIHints
+from .responses import EntityData, Intent, ResponseGenerationResponse, UIHints
 
 
 class ChatAgentState(BaseModel):
@@ -21,7 +21,6 @@ class ChatAgentState(BaseModel):
     ui_hints: UIHints | None = None
     confirmation_request: PortfolioConfirmationRequest | None = None
     show_form: bool = False
-    form_data: PortfolioFormData | None = None
     errors: list[str] = Field(default_factory=list)
 
 

@@ -10,7 +10,6 @@ from ...models import (
     ChatSession,
     EntityData,
     Intent,
-    PortfolioBuildingState,
     ResponseGenerationResponse,
 )
 from ...models.assets import Asset, Cash, Crypto, Stock
@@ -28,8 +27,7 @@ class ResponseGenerator:
         session: ChatSession,
         user_message: str,
         intent: Intent,
-        entities: list[EntityData],
-        portfolio_state: PortfolioBuildingState
+        entities: list[EntityData]
     ) -> ResponseGenerationResponse:
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-8:]:
@@ -39,7 +37,6 @@ class ResponseGenerator:
             )
 
         prompt_variables = {
-            "portfolio_summary": self._get_portfolio_summary(portfolio_state),
             "intent": intent,
             "entities": entities,
         }
@@ -86,34 +83,3 @@ class ResponseGenerator:
             return ResponseGenerationResponse(
                 response="I encountered an error processing your request. Could you please rephrase?"
             )
-
-
-    def _get_portfolio_summary(self, portfolio_state: PortfolioBuildingState) -> str:
-        if not portfolio_state.assets:
-            return "No assets in portfolio yet"
-
-        summary_parts = []
-        by_type: dict[str, list[Asset]] = {}
-
-        for asset in portfolio_state.assets:
-            asset_type = asset.type
-            if asset_type not in by_type:
-                by_type[asset_type] = []
-            by_type[asset_type].append(asset)
-
-        for asset_type, assets in by_type.items():
-            if asset_type == "stock":
-                stocks = [f"{a.ticker} ({a.shares} shares)" for a in assets if isinstance(a, Stock)]
-                summary_parts.append(f"Stocks: {', '.join(stocks)}")
-            elif asset_type == "crypto":
-                cryptos = [f"{a.symbol} ({a.amount})" for a in assets if isinstance(a, Crypto)]
-                summary_parts.append(f"Crypto: {', '.join(cryptos)}")
-            elif asset_type == "real_estate":
-                summary_parts.append(f"Real Estate: {len(assets)} properties")
-            elif asset_type == "mortgage":
-                summary_parts.append(f"Mortgages: {len(assets)} loans")
-            elif asset_type == "cash":
-                total_cash = sum(a.amount for a in assets if isinstance(a, Cash))
-                summary_parts.append(f"Cash: ${total_cash:,.2f}")
-
-        return "\n".join(summary_parts)

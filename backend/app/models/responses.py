@@ -137,3 +137,42 @@ class PortfolioFormData(BaseModel):
         default_factory=list,
         description="Suggested asset additions"
     )
+
+
+class FormPreparerResponse(BaseModel):
+    show_form: bool = Field(description="Whether to show the portfolio form")
+    form_data: PortfolioFormData = Field(description="Portfolio form data")
+    response: str = Field(description="Response message to display")
+    ui_hints: UIHints = Field(description="UI hints for frontend")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "show_form": True,
+                "form_data": {
+                    "assets": [
+                        {
+                            "type": "stock",
+                            "ticker": "AAPL",
+                            "shares": 100
+                        },
+                        {
+                            "type": "cash",
+                            "currency": "USD",
+                            "amount": 5000.0
+                        }
+                    ],
+                    "suggested_additions": [
+                        {
+                            "type": "crypto",
+                            "message": "Consider adding cryptocurrency for diversification"
+                        }
+                    ]
+                },
+                "response": "Please review your portfolio details below",
+                "ui_hints": {
+                    "show_portfolio_summary": True,
+                    "current_asset_count": 2
+                }
+            }
+        }

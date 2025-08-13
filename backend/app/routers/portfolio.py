@@ -12,7 +12,6 @@ from ..db.base import get_db
 from ..db.models import User
 from ..models import (
     AddAssetRequest,
-    ConfirmActionRequest,
     Portfolio,
     PortfolioAction,
     PortfolioActionResult,
@@ -26,7 +25,6 @@ logger = logging.getLogger(__name__)
 portfolio_router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 
 
-# Endpoints
 @portfolio_router.get("/", response_model=Portfolio)
 async def get_portfolio(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -127,58 +125,6 @@ async def add_asset(
         raise
     except Exception as e:
         logger.error(f"Failed to update asset: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        ) from e
-
-
-@portfolio_router.post("/confirm", response_model=PortfolioActionResult)
-async def confirm_portfolio_action(
-    request: ConfirmActionRequest,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
-):
-    """
-    Confirm or reject a pending portfolio action.
-
-    This endpoint is called when the user responds to a confirmation request
-    from the chat interface.
-    """
-    try:
-        logger.info(f"Processing confirmation {request.confirmation_id} for user {current_user.id}")
-
-        # Import here to avoid circular dependency
-        from ..agents.chat_agent import ChatAgent
-
-        # Get the chat agent instance (in production, this would be a singleton or injected)
-        agent = ChatAgent(db)
-
-        result = agent.process_confirmation(
-            confirmation_id=request.confirmation_id,
-            confirmed=request.confirmed,
-            user_id=str(current_user.id),
-            db=db
-        )
-
-        if not result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.get("message", "Failed to process confirmation")
-            )
-
-        return PortfolioActionResult(
-            success=True,
-            action=PortfolioAction.CONFIRMATION_PROCESSED,
-            message=result["message"],
-            portfolio_updated=result.get("portfolio_updated", False),
-            portfolio_summary=result.get("portfolio_summary")
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to process confirmation: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

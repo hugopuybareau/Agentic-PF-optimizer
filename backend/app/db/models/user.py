@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..base import Base
 
 if TYPE_CHECKING:
-    from .portfolio import Portfolio
+    from .portfolio import DBPortfolio
 
 
 class User(Base):
@@ -43,7 +43,7 @@ class User(Base):
     total_tokens_used: Mapped[int] = mapped_column(Integer, server_default=text("0"), nullable=False)
     preferred_language: Mapped[str] = mapped_column(String(8), server_default=text("'en'"), nullable=False)
 
-    portfolios: Mapped[list[Portfolio]] = relationship(
+    portfolios: Mapped[list[DBPortfolio]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",

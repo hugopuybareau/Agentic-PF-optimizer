@@ -12,13 +12,13 @@ from ..base import Base
 
 if TYPE_CHECKING:
     from .alert import Alert
-    from .asset import Asset
+    from .asset import DBAsset
     from .digest import Digest
     from .newsitem import NewsItem
     from .user import User
 
 
-class Portfolio(Base):
+class DBPortfolio(Base):
     __tablename__ = "portfolios"
 
     id: Mapped[UUID] = mapped_column(
@@ -53,7 +53,7 @@ class Portfolio(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    assets: Mapped[list[Asset]] = relationship(
+    assets: Mapped[list[DBAsset]] = relationship(
         back_populates="portfolio",
         cascade="all, delete-orphan",
         lazy="selectin",

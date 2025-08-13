@@ -4,7 +4,7 @@ from langfuse.decorators import langfuse_context, observe
 
 from ...models import ChatSession, PortfolioBuildingState
 from ...models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
-from ...models.responses import FormAssetData, FormSuggestion, PortfolioFormData, UIHints
+from ...models.responses import FormAssetData, FormPreparerResponse, FormSuggestion, PortfolioFormData, UIHints
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class FormPreparer:
 
     @observe(name="prepare_form_tool")
-    def prepare_form(self, session: ChatSession, portfolio_state: PortfolioBuildingState) -> dict:
+    def prepare_form(self, session: ChatSession, portfolio_state: PortfolioBuildingState) -> FormPreparerResponse:
 
         form_assets = []
         for asset in portfolio_state.assets:
@@ -76,12 +76,12 @@ class FormPreparer:
             }
         )
 
-        return {
-            "show_form": True,
-            "form_data": form_data,
-            "response": response,
-            "ui_hints": ui_hints
-        }
+        return FormPreparerResponse(
+            show_form=True,
+            form_data=form_data,
+            response=response,
+            ui_hints=ui_hints
+        )
 
     def _suggest_missing_assets(self, current_assets: list[Asset]) -> list[FormSuggestion]:
         current_types = {asset.type for asset in current_assets}

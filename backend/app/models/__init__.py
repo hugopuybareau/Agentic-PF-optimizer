@@ -12,6 +12,7 @@ from .portfolio_requests import (
 )
 from .portfolio_responses import (
     AssetConfirmation,
+    AssetModification,
     ChatPortfolioUpdate,
     PortfolioAction,
     PortfolioActionResult,
@@ -20,12 +21,14 @@ from .portfolio_responses import (
     PortfolioEvent,
     PortfolioEventType,
     PortfolioSnapshot,
+    PortfolioSummary,
 )
 from .responses import (
     AssetAnalysisResponse,
     EntityData,
     EntityExtractionResponse,
     FormAssetData,
+    FormPreparerResponse,
     FormSuggestion,
     Intent,
     IntentClassificationResponse,
@@ -68,6 +71,7 @@ __all__ = [
     "EntityData",
     "EntityExtractionResponse",
     "FormAssetData",
+    "FormPreparerResponse",
     "FormSuggestion",
     "Intent",
     "IntentClassificationResponse",
@@ -78,6 +82,7 @@ __all__ = [
     "UIHints",
     # Portfolio Responses
     "AssetConfirmation",
+    "AssetModification",
     "ChatPortfolioUpdate",
     "PortfolioAction",
     "PortfolioActionResult",
@@ -86,6 +91,7 @@ __all__ = [
     "PortfolioEvent",
     "PortfolioEventType",
     "PortfolioSnapshot",
+    "PortfolioSummary",
     # Portfolio Requests
     "AddAssetRequest",
     "ConfirmActionRequest",

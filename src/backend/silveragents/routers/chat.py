@@ -48,13 +48,6 @@ async def send_message(
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
     db: Annotated[Session, Depends(get_db)]
 ):
-    """
-    Send a message to the chat agent.
-
-    The agent will process the message, extract portfolio-related intents,
-    and return a response that may include a confirmation request for
-    portfolio modifications.
-    """
     try:
         logger.info(f"Received chat message: session={request.session_id}, user={current_user.id if current_user else 'anonymous'}")
 
@@ -88,12 +81,6 @@ async def confirm_action(
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
     db: Annotated[Session, Depends(get_db)]
 ):
-    """
-    Process confirmation for a portfolio action.
-
-    This endpoint is called when the user clicks accept/reject on a
-    confirmation request in the chat interface.
-    """
     try:
         if not current_user:
             raise HTTPException(
@@ -112,19 +99,11 @@ async def confirm_action(
             db=db
         )
 
-        if not result["success"]:
+        if not result.success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.get("message", "Failed to process confirmation")
+                detail=result.message if result.message else "Confirmation failed"
             )
-
-        # If confirmed and portfolio was updated, get the latest portfolio
-        if result.get("confirmed") and result.get("portfolio_updated"):
-            service = PortfolioService(db)
-            portfolio_summary = service.get_portfolio_summary(current_user.id)
-            result["portfolio_summary"] = portfolio_summary
-
-            logger.info(f"Portfolio updated after confirmation: {portfolio_summary.get('asset_count', 0)} assets")
 
         return result
 
@@ -144,10 +123,6 @@ async def stream_chat_response(
     user_id: str | None = None,
     db: Session | None = None
 ) -> AsyncGenerator[str, None]:
-    """
-    Stream chat response token by token with configurable delays.
-    Includes confirmation requests if portfolio actions are detected.
-    """
     try:
         agent = get_chat_agent(db)
 
@@ -189,7 +164,7 @@ async def stream_chat_response(
         yield f"data: {json.dumps(error_data)}\n\n"
 
 
-@chat_router.post("/message/stream")
+@chat_router.post("/message/stream", response_class=StreamingResponse)
 async def send_message_stream(
     request: ChatMessageRequest,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
@@ -233,11 +208,6 @@ async def submit_portfolio(
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
     db: Annotated[Session, Depends(get_db)]
 ):
-    """
-    Submit the portfolio built through chat for persistence and analysis.
-
-    This is called when the user confirms their complete portfolio in the form view.
-    """
     try:
         if not current_user:
             raise HTTPException(
@@ -249,7 +219,6 @@ async def submit_portfolio(
         portfolio_agent = get_portfolio_agent()
         portfolio_service = PortfolioService(db)
 
-        # Validate session exists
         session_portfolio = chat_agent.get_session_portfolio(submission.session_id)
         if not session_portfolio and not submission.portfolio.assets:
             raise HTTPException(
@@ -257,16 +226,14 @@ async def submit_portfolio(
                 detail="No portfolio found for this session"
             )
 
-        # Use submitted portfolio or session portfolio
         portfolio_to_save = submission.portfolio if submission.portfolio.assets else session_portfolio
 
-        if not portfolio_to_save or not getattr(portfolio_to_save, "assets", None):
+        if not portfolio_to_save or not portfolio_to_save.assets:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No valid portfolio with assets found"
             )
 
-        # Save each asset to the database
         saved_count = 0
         failed_count = 0
 
@@ -275,7 +242,7 @@ async def submit_portfolio(
                 user_id=current_user.id,
                 asset=asset
             )
-            if result["success"]:
+            if result.success:
                 saved_count += 1
             else:
                 failed_count += 1

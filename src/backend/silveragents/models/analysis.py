@@ -25,3 +25,4 @@ class AnalysisResult(BaseModel):
     risk_assessment: str
     recommendations: list[str]
     confidence_score: float
+

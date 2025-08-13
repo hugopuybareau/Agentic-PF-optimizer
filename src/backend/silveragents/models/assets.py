@@ -2,7 +2,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-# Asset type literal for type safety
 AssetType = Literal["stock", "crypto", "real_estate", "mortgage", "cash"]
 
 

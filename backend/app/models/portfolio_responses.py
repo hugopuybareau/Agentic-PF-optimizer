@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -17,7 +17,6 @@ class PortfolioAction(StrEnum):
 
 
 class AssetConfirmation(BaseModel):
-    """Asset details for confirmation."""
     type: AssetType
     symbol: str | None = Field(None, description="Ticker/Symbol for stocks/crypto")
     name: str | None = Field(None, description="Human-readable name")
@@ -41,7 +40,6 @@ class AssetConfirmation(BaseModel):
 
 
 class PortfolioConfirmationRequest(BaseModel):
-    """Request for portfolio action confirmation."""
     confirmation_id: str = Field(description="Unique ID for this confirmation")
     action: PortfolioAction
     assets: list[AssetConfirmation] = Field(description="Assets involved in the action")
@@ -68,7 +66,6 @@ class PortfolioConfirmationRequest(BaseModel):
 
 
 class PortfolioConfirmationResponse(BaseModel):
-    """Response to a portfolio confirmation request."""
     confirmation_id: str
     confirmed: bool
     user_id: UUID | None = None
@@ -86,7 +83,6 @@ class PortfolioConfirmationResponse(BaseModel):
 
 
 class PortfolioActionResult(BaseModel):
-    """Result of a portfolio action after confirmation."""
     success: bool
     action: PortfolioAction
     message: str
@@ -116,7 +112,6 @@ class PortfolioActionResult(BaseModel):
 
 
 class ChatPortfolioUpdate(BaseModel):
-    """Portfolio update event for chat responses."""
     session_id: str
     confirmation_request: PortfolioConfirmationRequest | None = None
     immediate_action: bool = Field(
@@ -151,7 +146,6 @@ class ChatPortfolioUpdate(BaseModel):
 
 
 class PortfolioSnapshot(BaseModel):
-    """Current state of a portfolio."""
     portfolio_id: UUID
     user_id: UUID
     name: str
@@ -199,7 +193,6 @@ class PortfolioEventType(StrEnum):
 
 
 class PortfolioEvent(BaseModel):
-    """Event emitted when portfolio changes."""
     event_type: PortfolioEventType
     portfolio_id: UUID
     user_id: UUID

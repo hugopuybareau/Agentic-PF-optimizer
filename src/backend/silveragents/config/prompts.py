@@ -64,7 +64,7 @@ class PromptManager:
     def build_messages(
         self,
         system_prompt_name: str,
-        user_content: HumanMessage,
+        user_content: str,
         system_variables: dict[str, Any] | None = None,
         conversation_history: list[BaseMessage] | None = None
     ) -> list[BaseMessage]:
@@ -88,7 +88,7 @@ class PromptManager:
         if conversation_history:
             messages.extend(conversation_history)
 
-        messages.append(user_content)
+        messages.append(HumanMessage(user_content))
 
         return messages
 

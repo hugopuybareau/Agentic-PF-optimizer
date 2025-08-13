@@ -11,7 +11,6 @@ from langchain_openai import AzureChatOpenAI
 from pydantic import SecretStr
 
 from ..config.prompts import prompt_manager
-from ..models.assets import Asset
 from ..models import (
     AnalysisResult,
     AssetAnalysisResponse,
@@ -19,6 +18,7 @@ from ..models import (
     NewsItem,
     PortfolioDigestResponse,
 )
+from ..models.assets import Asset
 
 logger = logging.getLogger(__name__)
 

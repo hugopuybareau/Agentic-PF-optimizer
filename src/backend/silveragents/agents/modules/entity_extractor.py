@@ -17,7 +17,7 @@ class EntityExtractor:
         self.llm = llm
 
     @observe(name="extract_entities_tool")
-    def extract_entities(self, session: ChatSession, user_message: HumanMessage, intent: Intent) -> list[EntityData]:
+    def extract_entities(self, session: ChatSession, user_message: str, intent: Intent) -> list[EntityData]:
         if intent not in [Intent.ADD_ASSET, Intent.MODIFY_ASSET, Intent.REMOVE_ASSET]:
             return []
 

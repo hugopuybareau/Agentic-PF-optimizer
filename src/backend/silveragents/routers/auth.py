@@ -1,7 +1,7 @@
 # backend/app/routers/auth.py
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -91,7 +91,7 @@ async def login(
             detail="Inactive user",
         )
 
-    user.last_login = datetime.now(datetime.UTC) #type: ignore
+    user.last_login = datetime.now(UTC)
     db.commit()
 
     return Token(

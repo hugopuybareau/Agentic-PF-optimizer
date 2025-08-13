@@ -1,47 +1,34 @@
 import operator
-from typing import Annotated, Any
+from typing import Annotated
 
-from langchain.schema import HumanMessage
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .analysis import AnalysisResult, NewsItem
 from .assets import Asset
 from .chat import ChatSession
-from .chat_api import ChatResponse
 from .portfolio import Portfolio
 from .portfolio_requests import ConfirmActionRequest
-from .responses import EntityData, Intent
+from .responses import EntityData, Intent, PortfolioFormData, ResponseGenerationResponse, UIHints
 
 
 class ChatAgentState(BaseModel):
-    # Current session
     session: ChatSession
-    # Last user message
-    user_message: HumanMessage
-    # Current step in the flow
-    current_step: str
-    # Intent classification
+    user_message: str
+    current_step: str = "classify_intent"
     intent: Intent
-    # Extracted entities
-    entities: list[EntityData]
-    # Response to send
-    response: ChatResponse
-    # UI hints for frontend
-    ui_hints: dict[str, Any]
-    # Pending confirmations
-    confirmation_request: ConfirmActionRequest
-    # Whether to show form
-    show_form: bool
-    # Form data if applicable
-    form_data: dict[str, Any] | None
-    # Errors
-    errors: Annotated[list[str], lambda x, y: x + y]
+    entities: list[EntityData] = Field(default_factory=list)
+    response: ResponseGenerationResponse | None = None
+    ui_hints: UIHints | None = None
+    confirmation_request: ConfirmActionRequest | None = None
+    show_form: bool = False
+    form_data: PortfolioFormData | None = None
+    errors: list[str] = Field(default_factory=list)
 
 
 class AgentState(BaseModel):
     portfolio: Portfolio
     user_query: str | None
-    task_type: str  # "analyze", "digest", "alert"
+    task_type: str
 
     # processing
     current_step: str
@@ -53,13 +40,13 @@ class AgentState(BaseModel):
     classified_news: Annotated[list[NewsItem], operator.add]
     analysis_results: Annotated[list[AnalysisResult], operator.add]
 
-    vector_context: dict | None
+    vector_context: dict | None = None
 
     # output
-    final_response: str | None
+    final_response: str | None = None
     recommendations: Annotated[list[str], operator.add]
     risk_alerts: Annotated[list[str], operator.add]
 
     # meta
-    execution_time: float | None
+    execution_time: float | None = None
     errors: Annotated[list[str], operator.add]

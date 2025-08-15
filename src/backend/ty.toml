@@ -1,12 +1,8 @@
 [environment]
-python = "3.13"
+python-version = "3.13"
 
 [src]
-paths = ["silveragents"]
+include = ["silveragents"]
 
 [rules]
-enabled = ["all"]
-# disabled = ["line-length", "docstring-missing"]
-
-[terminal]
-colors = true
+possibly-unresolved-reference = "warn"

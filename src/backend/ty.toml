@@ -1,0 +1,12 @@
+[environment]
+python = "3.13"
+
+[src]
+paths = ["silveragents"]
+
+[rules]
+enabled = ["all"]
+# disabled = ["line-length", "docstring-missing"]
+
+[terminal]
+colors = true

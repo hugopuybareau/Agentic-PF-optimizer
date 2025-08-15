@@ -4,10 +4,13 @@ env_python/
 # .env files
 .env
 
-# __pycache__ files 
+# cache files 
 **/__pycache__/
 *.py[cod]
-.DS_store
+**/.DS_store
+**/.mypy_cache
+**/.egg_info
+
 
 # Logs
 *.log

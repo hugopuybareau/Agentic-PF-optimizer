@@ -209,7 +209,7 @@ class PortfolioService:
                 asset.quantity = current_quantity - quantity
                 asset.last_updated = datetime.utcnow()
                 action = "reduced"
-                remaining = float(asset.quantity)
+                remaining = asset.quantity
                 logger.info(f"Reduced {symbol}: {current_quantity} -> {remaining}")
 
             self.db.commit()

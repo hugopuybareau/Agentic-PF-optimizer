@@ -47,11 +47,11 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: src/backend/Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/app:/backend/app
+      - .src/backend/silveragents:/backend/silveragents
     depends_on:
       qdrant:
         condition: service_started
@@ -60,7 +60,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - LOG_CFG=${LOG_CFG:-/backend/logs/logging.yml}
+      - LOG_CFG=${LOG_CFG:-/src/backend/logs/logging.yml}
       - QDRANT_HOST=${QDRANT_HOST:-qdrant}
       - QDRANT_PORT=${QDRANT_PORT:-6333}
       - ENVIRONMENT=${ENVIRONMENT:-production}
@@ -76,17 +76,17 @@ services:
       - BING_SUBSCRIPTION_KEY=${BING_SUBSCRIPTION_KEY}
     env_file:
       - .env
-    command: ["./wait-for-it.sh", "postgres:5432", "--", ".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["./wait-for-it.sh", "postgres:5432", "--", ".venv/bin/uvicorn", "silveragents.main:silveragents", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     restart: unless-stopped
 
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: src/frontend/Dockerfile
     ports:
       - "8080:8080"
     volumes:
-      - ./frontend/:/frontend
+      - ./src/frontend/:/frontend
       - frontend_node_modules:/frontend/node_modules
     restart: unless-stopped
 

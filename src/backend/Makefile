@@ -10,11 +10,11 @@ format:
 	uv run ruff check --fix silveragents/ tests/
 	uv run ruff format silveragents/ tests/
 
-.PHONY: mypy
-mypy:
-	uv run mypy --config-file pyproject.toml silveragents
+.PHONY: ty
+ty:
+	uv run ty check silveragents
 
-typecheck: mypy
+typecheck: ty
 
 .PHONY: test
 test:

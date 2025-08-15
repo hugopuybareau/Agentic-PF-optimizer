@@ -11,8 +11,8 @@ repos:
         pass_filenames: false
 
       - id: mypy
-        name: Mypy
-        entry: make mypy
+        name: type check
+        entry: make ty
         types: [python]
         language: system
         pass_filenames: false

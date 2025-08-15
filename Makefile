@@ -19,13 +19,13 @@ lint-py:
 lint:
 	@make lint-py
 
-.PHONY: mypy
-mypy:
-	@make -C src/backend mypy
+.PHONY: ty
+ty:
+	@make -C src/backend ty
 
 .PHONY: typecheck
 typecheck:
-	@make mypy
+	@make ty
 
 .PHONY: test
 test:

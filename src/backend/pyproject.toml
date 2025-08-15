@@ -44,6 +44,7 @@ dependencies = [
     "bcrypt>=3.2.0,<4.0.0",
     "redis==6.4.0",
     "pydantic-settings==2.10.*",
+    "sentence-transformers==5.1.*",
 ]
 
 [project.optional-dependencies]

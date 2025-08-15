@@ -1,5 +1,3 @@
-# backend/test/conftest.py
-
 import os
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +13,7 @@ os.environ["ENVIRONMENT"] = "test"
 @pytest.fixture(autouse=True)
 def mock_azure_openai():
     """Mock Azure OpenAI API calls"""
-    with patch('backend.app.agents.chat_agent.AzureChatOpenAI') as mock_llm_class:
+    with patch('silveragents.agents.chat_agent.AzureChatOpenAI') as mock_llm_class:
         mock_instance = MagicMock()
 
         # Mock intent classification responses
@@ -55,7 +53,7 @@ def mock_azure_openai():
 @pytest.fixture
 def mock_entity_extraction():
     """Mock entity extraction"""
-    with patch('backend.app.agents.chat_agent.ChatAgent._extract_entities') as mock_extract:
+    with patch('silveragents.agents.chat_agent.ChatAgent._extract_entities') as mock_extract:
         def mock_extraction(state):
             message = state.get("user_message", "")
             entities = {}

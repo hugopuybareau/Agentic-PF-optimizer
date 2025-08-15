@@ -1,5 +1,3 @@
-# backend/app/agent/vector_store.py
-
 import logging
 import os
 import uuid

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 from uuid import UUID
 
@@ -95,10 +95,11 @@ class PortfolioService:
                 .first()
             )
 
+            old_quantity = None
             if existing_asset:
                 old_quantity = float(existing_asset.quantity)
                 existing_asset.quantity = float(existing_asset.quantity) + quantity
-                existing_asset.last_updated = datetime.utcnow()
+                existing_asset.last_updated = datetime.now(UTC)
                 action = "updated"
                 logger.info(
                     f"Updated {asset_type} {symbol}: {old_quantity} -> {existing_asset.quantity}"
@@ -126,7 +127,7 @@ class PortfolioService:
                     AssetModification(
                         asset_type=asset_type,  # type: ignore
                         symbol=symbol,
-                        previous_quantity=old_quantity if existing_asset else None,
+                        previous_quantity=old_quantity,
                         new_quantity=quantity
                         if not existing_asset
                         else float(existing_asset.quantity),
@@ -207,7 +208,7 @@ class PortfolioService:
             else:
                 # Reduce quantity
                 asset.quantity = current_quantity - quantity
-                asset.last_updated = datetime.utcnow()
+                asset.last_updated = datetime.now(UTC)
                 action = "reduced"
                 remaining = asset.quantity
                 logger.info(f"Reduced {symbol}: {current_quantity} -> {remaining}")
@@ -290,7 +291,7 @@ class PortfolioService:
 
             old_quantity = float(asset.quantity)
             asset.quantity = new_quantity
-            asset.last_updated = datetime.utcnow()
+            asset.last_updated = datetime.now(UTC)
 
             self.db.commit()
 
@@ -411,7 +412,7 @@ class PortfolioService:
                 asset_count=len(portfolio.assets),
                 assets=portfolio.assets,
                 by_type=by_type,
-                last_updated=datetime.utcnow().isoformat(),
+                last_updated=datetime.now(UTC).isoformat(),
                 error=None,
             )
 

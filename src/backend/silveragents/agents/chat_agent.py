@@ -62,8 +62,8 @@ class ChatAgent:
 
         self.llm = AzureChatOpenAI(
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
-            api_key=SecretStr(os.getenv("AZURE_OPENAI_API_KEY") or ""),
-            api_version="2025-01-01-preview",
+            openai_api_key=SecretStr(os.getenv("AZURE_OPENAI_API_KEY") or ""),
+            openai_api_version="2025-01-01-preview",
             temperature=0.3,
             callbacks=[self.langfuse_handler],
         )
@@ -481,37 +481,28 @@ class ChatAgent:
             session.add_message("assistant", message_text, response_metadata)
             self.session_storage.set(session_id, session)
 
-            # has to be json serializable for sse
-            response = {
-                "message": message_text,
-                "session_id": session_id,
-                "ui_hints": dump(result.ui_hints),
-                "show_form": result.show_form,
-            }
-            if result.confirmation_request:
-                response |= {
-                    "confirmation_request": dump(result.confirmation_request),
-                    "requires_confirmation": getattr(
-                        result.confirmation_request, "confirmed", None
-                    )
-                    is None,
-                }
-
-            if result.errors:
-                response["errors"] = list(result.errors)
+            # Create ChatResponse with proper Pydantic objects (not dumped versions)
+            chat_response = ChatResponse(
+                message=message_text,
+                session_id=session_id,
+                ui_hints=None,  # ChatResponse expects list[EntityData] | None, not UIHints
+                show_form=result.show_form,
+                confirmation_request=result.confirmation_request,
+                requires_confirmation=(
+                    result.confirmation_request is not None
+                    and getattr(result.confirmation_request, "confirmed", None) is None
+                ),
+                error=None if not result.errors else "; ".join(result.errors),
+            )
 
             trace.update(
-                output=response,
+                output=chat_response.model_dump(mode="json"),
                 metadata={
                     "success": True,
                     "show_form": result.show_form,
                     "intent": dump(result.intent),
                     "entities_extracted": bool(result.entities),
-                    "confirmation_pending": bool(
-                        result.confirmation_request
-                        and getattr(result.confirmation_request, "confirmed", None)
-                        is None
-                    ),
+                    "confirmation_pending": chat_response.requires_confirmation,
                 },
             )
 
@@ -519,7 +510,7 @@ class ChatAgent:
                 "Message processed - Confirmation: %s",
                 bool(result.confirmation_request),
             )
-            return ChatResponse(**response)
+            return chat_response
 
         except Exception as e:
             logger.error(
@@ -531,11 +522,9 @@ class ChatAgent:
             )
 
             return ChatResponse(
-                {
-                    "message": "I'm having trouble processing that. Could you try again?",
-                    "session_id": session_id,
-                    "error": str(e),
-                }
+                message="I'm having trouble processing that. Could you try again?",
+                session_id=session_id,
+                error=str(e),
             )
 
     @observe(name="process_confirmation")

@@ -103,8 +103,8 @@ class RedisSessionStorage(SessionStorage):
             if not data:
                 return None
 
-            session_dict = json.loads(data)  # type: ignore
-            return ChatSession(**session_dict)
+            session_dict = json.loads(data)
+            return ChatSession(**session_dict)  # type: ignore
 
         except Exception as e:
             logger.error(f"Failed to get session {session_id}: {e}")

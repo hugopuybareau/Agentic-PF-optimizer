@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class LangfuseConfig:
-
-    _instance: Optional['LangfuseConfig'] = None
+    _instance: Optional["LangfuseConfig"] = None
     _langfuse: Langfuse | None = None
     _handler: CallbackHandler | None = None
 
@@ -22,7 +21,7 @@ class LangfuseConfig:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, 'initialized'):
+        if not hasattr(self, "initialized"):
             self.secret_key = os.getenv("LANGFUSE_SECRET_KEY")
             self.public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
             self.host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
@@ -37,15 +36,11 @@ class LangfuseConfig:
     def _initialize_langfuse(self):
         try:
             self._langfuse = Langfuse(
-                secret_key=self.secret_key,
-                public_key=self.public_key,
-                host=self.host
+                secret_key=self.secret_key, public_key=self.public_key, host=self.host
             )
 
             self._handler = CallbackHandler(
-                secret_key=self.secret_key,
-                public_key=self.public_key,
-                host=self.host
+                secret_key=self.secret_key, public_key=self.public_key, host=self.host
             )
 
             logger.info(f"Langfuse initialized successfully at {self.host}")
@@ -72,27 +67,24 @@ class LangfuseConfig:
             @wraps(func)
             def wrapper(*args, **func_kwargs):
                 trace_name = name or func.__name__
-                trace = self._langfuse.trace( # type: ignore
-                    name=trace_name,
-                    **kwargs
+                trace = self._langfuse.trace(  # type: ignore
+                    name=trace_name, **kwargs
                 )
 
                 try:
-                    with langfuse_context(trace_id=trace.id): # type: ignore
+                    with langfuse_context(trace_id=trace.id):  # type: ignore
                         result = func(*args, **func_kwargs)
-                        trace.update(
-                            output=result,
-                            metadata={"success": True}
-                        )
+                        trace.update(output=result, metadata={"success": True})
                         return result
                 except Exception as e:
                     trace.update(
                         output={"error": str(e)},
-                        metadata={"success": False, "error": str(e)}
+                        metadata={"success": False, "error": str(e)},
                     )
                     raise
 
             return wrapper
+
         return decorator
 
     def observe_method(self, name: str | None = None, **kwargs):
@@ -126,7 +118,7 @@ def setup_langfuse_env():
         "LANGFUSE_SECRET_KEY": "your-secret-key",
         "LANGFUSE_PUBLIC_KEY": "your-public-key",
         "LANGFUSE_HOST": "https://cloud.langfuse.com",
-        "LANGFUSE_ENABLED": "true"
+        "LANGFUSE_ENABLED": "true",
     }
 
     missing_vars = []

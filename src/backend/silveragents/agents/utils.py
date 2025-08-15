@@ -5,6 +5,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 def clean_value(val: Any) -> str | int | float | bool | str:
     if isinstance(val, str | int | float | bool):
         return val
@@ -15,6 +16,7 @@ def clean_value(val: Any) -> str | int | float | bool | str:
     else:
         return str(val)
 
+
 def dump(x):
     if hasattr(x, "model_dump"):
         return x.model_dump(mode="json", exclude_none=True)
@@ -23,4 +25,3 @@ def dump(x):
     if isinstance(x, list | tuple):
         return [dump(v) for v in x]
     return x
-

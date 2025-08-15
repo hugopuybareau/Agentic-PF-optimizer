@@ -13,9 +13,11 @@ class UserCreate(BaseModel):
     full_name: str | None = None
     preferred_language: str | None = "en"
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
 
 class UserResponse(BaseModel):
     id: UUID

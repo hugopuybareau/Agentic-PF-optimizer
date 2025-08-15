@@ -21,7 +21,6 @@ async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(_bearer_scheme)],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
-
     """
     standard, strict authentication dependency.
     requires a valid token, finds the user in DB, and ensures the user is active.
@@ -43,17 +42,18 @@ async def get_current_user(
 
     if user.is_active is not True:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
         )
 
     return user
 
+
 async def get_current_user_optional(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme_optional)],
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme_optional)
+    ],
     db: Annotated[Session, Depends(get_db)],
 ) -> User | None:
-
     """
     does not require a token, but if provided, verifies it.
     never raises if missing/invalid token; always returns User | None.

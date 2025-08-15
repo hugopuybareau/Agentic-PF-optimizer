@@ -68,4 +68,4 @@ def test_news_search():
 def test_vector_store():
     # TODO: modify test to add assertions and check if collections exist
     vector_store = VectorStore()
-    collections = vector_store.client.get_collections()
+    vector_store.client.get_collections()

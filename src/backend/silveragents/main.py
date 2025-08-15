@@ -1,10 +1,8 @@
-# backend/app/main.py
-
 import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from logs.config import setup_logging
+from .logs.config import setup_logging
 
 from .db import models  # noqa: F401
 from .db.base import Base, engine
@@ -16,7 +14,7 @@ app = FastAPI(
     title="Agentic Portfolio Optimizer",
     description="AI-powered portfolio analysis and optimization using LangGraph agents",
     version="0.1",
-    debug=True
+    debug=True,
 )
 
 # cors
@@ -40,6 +38,7 @@ app.include_router(digest_router, prefix="/api", tags=["digest"])
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 app.include_router(portfolio_router, prefix="/api", tags=["portfolio"])
 
+
 @app.get("/")
 async def root():
     return {
@@ -51,16 +50,15 @@ async def root():
             "digest": "/api/digest",
             "analyze": "/api/analyze",
             "alerts": "/api/alerts",
-            "health": "/api/health"
-        }
+            "health": "/api/health",
+        },
     }
+
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "service": "portfolio-optimizer-backend"
-    }
+    return {"status": "healthy", "service": "portfolio-optimizer-backend"}
+
 
 @app.on_event("startup")
 def startup():

@@ -5,7 +5,7 @@ from .workflow_utils import WorkflowUtils
 
 __all__ = [
     "EntityExtractor",
-    "IntentClassifier", 
+    "IntentClassifier",
     "ResponseGenerator",
     "WorkflowUtils",
 ]

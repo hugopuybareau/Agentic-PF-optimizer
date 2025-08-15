@@ -59,7 +59,9 @@ class InMemorySessionStorage(SessionStorage):
         self.sessions.pop(session_id, None)
 
     def exists(self, session_id: str) -> bool:
-        return session_id in self.sessions and not self._is_expired(self.sessions[session_id])
+        return session_id in self.sessions and not self._is_expired(
+            self.sessions[session_id]
+        )
 
     def cleanup_expired(self) -> int:
         expired = []
@@ -77,9 +79,8 @@ class InMemorySessionStorage(SessionStorage):
 
 
 class RedisSessionStorage(SessionStorage):
-
     def __init__(self, redis_url: str | None = None, ttl_minutes: int = 60):
-        self.redis_url = redis_url or os.getenv('REDIS_URL')
+        self.redis_url = redis_url or os.getenv("REDIS_URL")
         self.ttl = ttl_minutes * 60
         self.key_prefix = "chat_session:"
 
@@ -102,7 +103,7 @@ class RedisSessionStorage(SessionStorage):
             if not data:
                 return None
 
-            session_dict = json.loads(data) # type: ignore
+            session_dict = json.loads(data)  # type: ignore
             return ChatSession(**session_dict)
 
         except Exception as e:
@@ -117,21 +118,17 @@ class RedisSessionStorage(SessionStorage):
             session_dict = session.model_dump()
 
             # Handle datetime serialization
-            for field in ['created_at', 'last_activity']:
+            for field in ["created_at", "last_activity"]:
                 if field in session_dict:
                     session_dict[field] = session_dict[field].isoformat()
 
             # Handle messages
-            for msg in session_dict.get('messages', []):
-                if 'timestamp' in msg:
-                    msg['timestamp'] = msg['timestamp'].isoformat()
+            for msg in session_dict.get("messages", []):
+                if "timestamp" in msg:
+                    msg["timestamp"] = msg["timestamp"].isoformat()
 
             # Store with TTL
-            self.client.setex(
-                key,
-                self.ttl,
-                json.dumps(session_dict)
-            )
+            self.client.setex(key, self.ttl, json.dumps(session_dict))
 
         except Exception as e:
             logger.error(f"Failed to set session {session_id}: {e}")
@@ -203,7 +200,7 @@ def get_session_storage() -> SessionStorage:
     """
     Get appropriate session storage based on environment.
     """
-    if os.getenv('ENVIRONMENT') == 'production':
+    if os.getenv("ENVIRONMENT") == "production":
         return RedisSessionStorage()
     else:
         return HybridSessionStorage()

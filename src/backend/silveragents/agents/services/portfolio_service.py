@@ -28,13 +28,13 @@ logger = logging.getLogger(__name__)
 class PortfolioService:
     def __init__(self, db: Session):
         self.db = db
-        logger.debug("PortfolioService for DB actions initialized with database session")
+        logger.debug(
+            "PortfolioService for DB actions initialized with database session"
+        )
 
     @observe(name="get_or_create_portfolio")
     def get_or_create_portfolio(
-        self,
-        user_id: UUID,
-        portfolio_name: str = "Main Portfolio"
+        self, user_id: UUID, portfolio_name: str = "Main Portfolio"
     ) -> DBPortfolio:
         try:
             user = self.db.query(User).filter(User.id == user_id).first()
@@ -47,24 +47,25 @@ class PortfolioService:
                 .filter(
                     and_(
                         DBPortfolio.user_id == user_id,
-                        DBPortfolio.name == portfolio_name
+                        DBPortfolio.name == portfolio_name,
                     )
                 )
                 .first()
             )
 
             if not portfolio:
-                logger.info(f"Creating new portfolio '{portfolio_name}' for user {user_id}")
-                portfolio = DBPortfolio(
-                    user_id=user_id,
-                    name=portfolio_name
+                logger.info(
+                    f"Creating new portfolio '{portfolio_name}' for user {user_id}"
                 )
+                portfolio = DBPortfolio(user_id=user_id, name=portfolio_name)
                 self.db.add(portfolio)
                 self.db.commit()
                 self.db.refresh(portfolio)
                 logger.info(f"Portfolio created with ID: {portfolio.id}")
             else:
-                logger.debug(f"Found existing portfolio {portfolio.id} for user {user_id}")
+                logger.debug(
+                    f"Found existing portfolio {portfolio.id} for user {user_id}"
+                )
 
             return portfolio
 
@@ -75,10 +76,7 @@ class PortfolioService:
 
     @observe(name="add_asset_to_portfolio")
     def add_asset(
-        self,
-        user_id: UUID,
-        asset: Asset,
-        portfolio_name: str = "Main Portfolio"
+        self, user_id: UUID, asset: Asset, portfolio_name: str = "Main Portfolio"
     ) -> PortfolioActionResult:
         try:
             portfolio = self.get_or_create_portfolio(user_id, portfolio_name)
@@ -91,7 +89,7 @@ class PortfolioService:
                     and_(
                         DBAsset.portfolio_id == portfolio.id,
                         DBAsset.symbol == symbol,
-                        DBAsset.asset_type == asset_type
+                        DBAsset.asset_type == asset_type,
                     )
                 )
                 .first()
@@ -111,7 +109,7 @@ class PortfolioService:
                     symbol=symbol,
                     asset_type=asset_type,
                     quantity=quantity,
-                    meta=meta
+                    meta=meta,
                 )
                 self.db.add(db_asset)
                 action = "added"
@@ -124,14 +122,18 @@ class PortfolioService:
                 action=PortfolioAction.ADD_ASSET,
                 message=f"Successfully {action} {symbol} to portfolio",
                 portfolio_updated=True,
-                assets_modified=[AssetModification(
-                    asset_type=asset_type,  # type: ignore
-                    symbol=symbol,
-                    previous_quantity=old_quantity if existing_asset else None,
-                    new_quantity=quantity if not existing_asset else float(existing_asset.quantity),
-                    action_performed=action,
-                    display_text=f"{action.title()} {symbol}: {quantity} {asset_type}"
-                )]
+                assets_modified=[
+                    AssetModification(
+                        asset_type=asset_type,  # type: ignore
+                        symbol=symbol,
+                        previous_quantity=old_quantity if existing_asset else None,
+                        new_quantity=quantity
+                        if not existing_asset
+                        else float(existing_asset.quantity),
+                        action_performed=action,
+                        display_text=f"{action.title()} {symbol}: {quantity} {asset_type}",
+                    )
+                ],
             )
 
             logger.info(f"Asset operation successful: {result.message}")
@@ -145,7 +147,7 @@ class PortfolioService:
                 action=PortfolioAction.ADD_ASSET,
                 message=f"Failed to add asset: {e}",
                 portfolio_updated=False,
-                error=str(e)
+                error=str(e),
             )
 
     @observe(name="remove_asset_from_portfolio")
@@ -155,7 +157,7 @@ class PortfolioService:
         symbol: str,
         asset_type: str,
         quantity: float | None = None,
-        portfolio_name: str = "Main Portfolio"
+        portfolio_name: str = "Main Portfolio",
     ) -> PortfolioActionResult:
         """
         Remove an asset or reduce its quantity in the portfolio.
@@ -179,7 +181,7 @@ class PortfolioService:
                     and_(
                         DBAsset.portfolio_id == portfolio.id,
                         DBAsset.symbol == symbol,
-                        DBAsset.asset_type == asset_type
+                        DBAsset.asset_type == asset_type,
                     )
                 )
                 .first()
@@ -191,7 +193,7 @@ class PortfolioService:
                     success=False,
                     action=PortfolioAction.REMOVE_ASSET,
                     message=f"Asset {symbol} not found in portfolio",
-                    portfolio_updated=False
+                    portfolio_updated=False,
                 )
 
             current_quantity = float(asset.quantity)
@@ -217,14 +219,16 @@ class PortfolioService:
                 action=PortfolioAction.REMOVE_ASSET,
                 message=f"Successfully {action} {symbol}",
                 portfolio_updated=True,
-                assets_modified=[AssetModification(
-                    asset_type=asset_type,  # type: ignore
-                    symbol=symbol,
-                    previous_quantity=current_quantity,
-                    new_quantity=remaining,
-                    action_performed=action,
-                    display_text=f"{action.title()} {symbol}: {current_quantity} -> {remaining} {asset_type}"
-                )]
+                assets_modified=[
+                    AssetModification(
+                        asset_type=asset_type,  # type: ignore
+                        symbol=symbol,
+                        previous_quantity=current_quantity,
+                        new_quantity=remaining,
+                        action_performed=action,
+                        display_text=f"{action.title()} {symbol}: {current_quantity} -> {remaining} {asset_type}",
+                    )
+                ],
             )
 
         except Exception as e:
@@ -235,7 +239,7 @@ class PortfolioService:
                 action=PortfolioAction.REMOVE_ASSET,
                 message=f"Failed to remove asset: {e}",
                 portfolio_updated=False,
-                error=str(e)
+                error=str(e),
             )
 
     @observe(name="update_asset_in_portfolio")
@@ -245,7 +249,7 @@ class PortfolioService:
         symbol: str,
         asset_type: str,
         new_quantity: float,
-        portfolio_name: str = "Main Portfolio"
+        portfolio_name: str = "Main Portfolio",
     ) -> PortfolioActionResult:
         """
         Update an asset's quantity in the portfolio.
@@ -269,7 +273,7 @@ class PortfolioService:
                     and_(
                         DBAsset.portfolio_id == portfolio.id,
                         DBAsset.symbol == symbol,
-                        DBAsset.asset_type == asset_type
+                        DBAsset.asset_type == asset_type,
                     )
                 )
                 .first()
@@ -281,7 +285,7 @@ class PortfolioService:
                     success=False,
                     action=PortfolioAction.UPDATE_ASSET,
                     message=f"Asset {symbol} not found in portfolio",
-                    portfolio_updated=False
+                    portfolio_updated=False,
                 )
 
             old_quantity = float(asset.quantity)
@@ -297,14 +301,16 @@ class PortfolioService:
                 action=PortfolioAction.UPDATE_ASSET,
                 message=f"Successfully updated {symbol} quantity",
                 portfolio_updated=True,
-                assets_modified=[AssetModification(
-                    asset_type=asset_type,  # type: ignore
-                    symbol=symbol,
-                    previous_quantity=old_quantity,
-                    new_quantity=new_quantity,
-                    action_performed="updated",
-                    display_text=f"Updated {symbol}: {old_quantity} -> {new_quantity} {asset_type}"
-                )]
+                assets_modified=[
+                    AssetModification(
+                        asset_type=asset_type,  # type: ignore
+                        symbol=symbol,
+                        previous_quantity=old_quantity,
+                        new_quantity=new_quantity,
+                        action_performed="updated",
+                        display_text=f"Updated {symbol}: {old_quantity} -> {new_quantity} {asset_type}",
+                    )
+                ],
             )
 
         except Exception as e:
@@ -315,14 +321,12 @@ class PortfolioService:
                 action=PortfolioAction.UPDATE_ASSET,
                 message=f"Failed to update asset: {e}",
                 portfolio_updated=False,
-                error=str(e)
+                error=str(e),
             )
 
     @observe(name="get_portfolio")
     def get_portfolio(
-        self,
-        user_id: UUID,
-        portfolio_name: str = "Main Portfolio"
+        self, user_id: UUID, portfolio_name: str = "Main Portfolio"
     ) -> Portfolio | None:
         """
         Get user's portfolio as a Portfolio model.
@@ -340,7 +344,7 @@ class PortfolioService:
                 .filter(
                     and_(
                         DBPortfolio.user_id == user_id,
-                        DBPortfolio.name == portfolio_name
+                        DBPortfolio.name == portfolio_name,
                     )
                 )
                 .first()
@@ -357,7 +361,9 @@ class PortfolioService:
                 if asset:
                     assets.append(asset)
 
-            logger.info(f"Retrieved portfolio with {len(assets)} assets for user {user_id}")
+            logger.info(
+                f"Retrieved portfolio with {len(assets)} assets for user {user_id}"
+            )
             return Portfolio(assets=assets)
 
         except Exception as e:
@@ -366,9 +372,7 @@ class PortfolioService:
 
     @observe(name="get_portfolio_summary")
     def get_portfolio_summary(
-        self,
-        user_id: UUID,
-        portfolio_name: str = "Main Portfolio"
+        self, user_id: UUID, portfolio_name: str = "Main Portfolio"
     ) -> PortfolioSummary:
         """
         Get a summary of the user's portfolio.
@@ -390,7 +394,7 @@ class PortfolioService:
                     assets=[],
                     by_type={},
                     last_updated=None,
-                    error=None
+                    error=None,
                 )
 
             # Group assets by type
@@ -408,7 +412,7 @@ class PortfolioService:
                 assets=portfolio.assets,
                 by_type=by_type,
                 last_updated=datetime.utcnow().isoformat(),
-                error=None
+                error=None,
             )
 
             logger.debug(f"Generated portfolio summary for user {user_id}")
@@ -422,7 +426,7 @@ class PortfolioService:
                 assets=[],
                 by_type={},
                 last_updated=None,
-                error=str(e)
+                error=str(e),
             )
 
     def _prepare_asset_data(self, asset: Asset) -> tuple[str, str, float, dict]:
@@ -433,15 +437,19 @@ class PortfolioService:
         elif isinstance(asset, Crypto):
             return asset.symbol, "crypto", asset.amount, {"symbol": asset.symbol}
         elif isinstance(asset, RealEstate):
-            return asset.address, "real_estate", asset.market_value, {
-                "address": asset.address,
-                "market_value": asset.market_value
-            }
+            return (
+                asset.address,
+                "real_estate",
+                asset.market_value,
+                {"address": asset.address, "market_value": asset.market_value},
+            )
         elif isinstance(asset, Mortgage):
-            return asset.lender, "mortgage", asset.balance, {
-                "lender": asset.lender,
-                "property_address": asset.property_address
-            }
+            return (
+                asset.lender,
+                "mortgage",
+                asset.balance,
+                {"lender": asset.lender, "property_address": asset.property_address},
+            )
         elif isinstance(asset, Cash):
             return asset.currency, "cash", asset.amount, {"currency": asset.currency}
         else:
@@ -457,21 +465,15 @@ class PortfolioService:
             elif db_asset.asset_type == "crypto":
                 return Crypto(symbol=db_asset.symbol, amount=quantity)
             elif db_asset.asset_type == "real_estate":
-                return RealEstate(
-                    address=db_asset.symbol,
-                    market_value=quantity
-                )
+                return RealEstate(address=db_asset.symbol, market_value=quantity)
             elif db_asset.asset_type == "mortgage":
                 return Mortgage(
                     lender=db_asset.symbol,
                     balance=quantity,
-                    property_address=meta.get("property_address")
+                    property_address=meta.get("property_address"),
                 )
             elif db_asset.asset_type == "cash":
-                return Cash(
-                    currency=db_asset.symbol,
-                    amount=quantity
-                )
+                return Cash(currency=db_asset.symbol, amount=quantity)
             else:
                 logger.warning(f"Unknown asset type in DB: {db_asset.asset_type}")
                 return None
@@ -487,35 +489,35 @@ class PortfolioService:
                 "type": "stock",
                 "symbol": asset.ticker,
                 "quantity": asset.shares,
-                "display": f"{asset.ticker} ({asset.shares} shares)"
+                "display": f"{asset.ticker} ({asset.shares} shares)",
             }
         elif isinstance(asset, Crypto):
             return {
                 "type": "crypto",
                 "symbol": asset.symbol,
                 "quantity": asset.amount,
-                "display": f"{asset.symbol} ({asset.amount})"
+                "display": f"{asset.symbol} ({asset.amount})",
             }
         elif isinstance(asset, RealEstate):
             return {
                 "type": "real_estate",
                 "address": asset.address,
                 "value": asset.market_value,
-                "display": f"Property: ${asset.market_value:,.0f}"
+                "display": f"Property: ${asset.market_value:,.0f}",
             }
         elif isinstance(asset, Mortgage):
             return {
                 "type": "mortgage",
                 "lender": asset.lender,
                 "balance": asset.balance,
-                "display": f"Mortgage ({asset.lender}): ${asset.balance:,.0f}"
+                "display": f"Mortgage ({asset.lender}): ${asset.balance:,.0f}",
             }
         elif isinstance(asset, Cash):
             return {
                 "type": "cash",
                 "currency": asset.currency,
                 "amount": asset.amount,
-                "display": f"Cash: {asset.currency} ${asset.amount:,.2f}"
+                "display": f"Cash: {asset.currency} ${asset.amount:,.2f}",
             }
         else:
             return {"type": "unknown", "display": str(asset)}

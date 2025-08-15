@@ -16,16 +16,22 @@ class PromptManager:
         self.langfuse = langfuse_config.langfuse
         self._cache: dict[str, Any] = {}
 
-    def get_prompt(self, prompt_name: str, variables: dict[str, Any] | None = None) -> str:
+    def get_prompt(
+        self, prompt_name: str, variables: dict[str, Any] | None = None
+    ) -> str:
         try:
             if not self.langfuse:
-                logger.warning("Langfuse not available, falling back to cached/default prompts")
+                logger.warning(
+                    "Langfuse not available, falling back to cached/default prompts"
+                )
                 return self._get_fallback_prompt(prompt_name, variables)
 
             prompt = self.langfuse.get_prompt(prompt_name, label="latest")
 
             if not prompt:
-                logger.warning(f"Prompt '{prompt_name}' not found in Langfuse, using fallback")
+                logger.warning(
+                    f"Prompt '{prompt_name}' not found in Langfuse, using fallback"
+                )
                 return self._get_fallback_prompt(prompt_name, variables)
 
             prompt_content = prompt.prompt
@@ -34,14 +40,16 @@ class PromptManager:
                 try:
                     prompt_content = prompt_content.format(**variables)
                 except KeyError as e:
-                    logger.warning(f"Variable substitution failed for prompt '{prompt_name}': {e}")
+                    logger.warning(
+                        f"Variable substitution failed for prompt '{prompt_name}': {e}"
+                    )
 
             try:
                 langfuse_context.update_current_observation(
                     metadata={
                         "prompt_name": prompt_name,
                         "prompt_version": prompt.version,
-                        "variables": variables or {}
+                        "variables": variables or {},
                     }
                 )
             except Exception as e:
@@ -53,11 +61,15 @@ class PromptManager:
             logger.error(f"Failed to get prompt '{prompt_name}' from Langfuse: {e}")
             return self._get_fallback_prompt(prompt_name, variables)
 
-    def get_system_message(self, prompt_name: str, variables: dict[str, Any] | None = None) -> SystemMessage:
+    def get_system_message(
+        self, prompt_name: str, variables: dict[str, Any] | None = None
+    ) -> SystemMessage:
         content = self.get_prompt(prompt_name, variables)
         return SystemMessage(content=content)
 
-    def get_human_message(self, prompt_name: str, variables: dict[str, Any] | None = None) -> HumanMessage:
+    def get_human_message(
+        self, prompt_name: str, variables: dict[str, Any] | None = None
+    ) -> HumanMessage:
         content = self.get_prompt(prompt_name, variables)
         return HumanMessage(content=content)
 
@@ -66,7 +78,7 @@ class PromptManager:
         system_prompt_name: str,
         user_content: str,
         system_variables: dict[str, Any] | None = None,
-        conversation_history: list[BaseMessage] | None = None
+        conversation_history: list[BaseMessage] | None = None,
     ) -> list[BaseMessage]:
         """
         Build a complete message list with system prompt from Langfuse and user message.
@@ -92,11 +104,11 @@ class PromptManager:
 
         return messages
 
-    def _get_fallback_prompt(self, prompt_name: str, variables: dict[str, Any] | None = None) -> str:
-
+    def _get_fallback_prompt(
+        self, prompt_name: str, variables: dict[str, Any] | None = None
+    ) -> str:
         fallback_prompts = {
-            "chat-intent-classifier":
-                """You are a portfolio assistant helping users build their investment portfolio.
+            "chat-intent-classifier": """You are a portfolio assistant helping users build their investment portfolio.
                 Classify the user's intent into one of these categories:
 
                 1. "add_asset" - User wants to add an asset (stock, crypto, real estate, etc.)
@@ -110,9 +122,7 @@ class PromptManager:
 
                 Consider the conversation history to understand context.
                 Return ONLY the intent category, nothing else.""",
-
-            "chat-entity-extractor":
-                """Extract investment details from the user message.
+            "chat-entity-extractor": """Extract investment details from the user message.
                 Look for:
                 - Asset type (stock, crypto, real_estate, mortgage, cash)
                 - Asset identifier (ticker, symbol, address, etc.)
@@ -130,9 +140,7 @@ class PromptManager:
 
                 If information is missing, include what you found and mark missing fields as null.
                 DO NOT include any text outside the JSON object.""",
-
-            "tools-news-classifier":
-                """You are a financial news classifier. Analyze the given news article and classify it with the following criteria:
+            "tools-news-classifier": """You are a financial news classifier. Analyze the given news article and classify it with the following criteria:
 
                 1. SENTIMENT: positive, negative, or neutral
                 2. IMPACT: high, medium, or low (how much this could affect the asset price)
@@ -147,9 +155,7 @@ class PromptManager:
                     "risk_type": "market_risk/regulatory_risk/operational_risk/credit_risk/other",
                     "reasoning": "Brief explanation of your classification"
                 }""",
-
-            "tools-asset-analyzer":
-                """You are an expert financial advisor analyzing portfolio assets based on recent news.
+            "tools-asset-analyzer": """You are an expert financial advisor analyzing portfolio assets based on recent news.
 
                 Provide a comprehensive analysis including:
                 1. SENTIMENT_SUMMARY: Overall sentiment from the news (2-3 sentences)
@@ -159,9 +165,7 @@ class PromptManager:
 
                 Be specific, actionable, and focus on risk management and optimization opportunities.
                 Consider both short-term news impacts and long-term portfolio health.""",
-
-            "chat-response-generator":
-                """You are a friendly portfolio assistant helping users build their investment portfolio.
+            "chat-response-generator": """You are a friendly portfolio assistant helping users build their investment portfolio.
 
                 Current portfolio state:
                 {portfolio_summary}
@@ -178,7 +182,7 @@ class PromptManager:
                 - Keep responses concise but informative
                 - Remember what the user has already told you
 
-                Generate an appropriate response based on the conversation history."""
+                Generate an appropriate response based on the conversation history.""",
         }
 
         prompt = fallback_prompts.get(prompt_name, f"Prompt '{prompt_name}' not found")
@@ -187,8 +191,11 @@ class PromptManager:
             try:
                 prompt = prompt.format(**variables)
             except KeyError as e:
-                logger.warning(f"Variable substitution failed for fallback prompt '{prompt_name}': {e}")
+                logger.warning(
+                    f"Variable substitution failed for fallback prompt '{prompt_name}': {e}"
+                )
 
         return prompt
+
 
 prompt_manager = PromptManager()

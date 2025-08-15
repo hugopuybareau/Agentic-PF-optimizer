@@ -28,11 +28,13 @@ logger = logging.getLogger(__name__)
 chat_agent = None
 portfolio_agent = None
 
+
 def get_chat_agent(db: Session | None = None):
     global chat_agent
     if chat_agent is None:
         chat_agent = ChatAgent(db)
     return chat_agent
+
 
 def get_portfolio_agent():
     global portfolio_agent
@@ -40,28 +42,31 @@ def get_portfolio_agent():
         portfolio_agent = PortfolioAgent()
     return portfolio_agent
 
+
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
+
 
 @chat_router.post("/message", response_model=ChatResponse)
 async def send_message(
     request: ChatMessageRequest,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     try:
-        logger.info(f"Received chat message: session={request.session_id}, user={current_user.id if current_user else 'anonymous'}")
+        logger.info(
+            f"Received chat message: session={request.session_id}, user={current_user.id if current_user else 'anonymous'}"
+        )
 
         agent = get_chat_agent(db)
         session_id = request.session_id or str(uuid.uuid4())
         user_id = str(current_user.id) if current_user else None
 
-        logger.debug(f"Processing message with session_id={session_id}, user_id={user_id}")
+        logger.debug(
+            f"Processing message with session_id={session_id}, user_id={user_id}"
+        )
 
         result = agent.process_message(
-            session_id=session_id,
-            user_message=request.message,
-            user_id=user_id,
-            _db=db
+            session_id=session_id, user_message=request.message, user_id=user_id, _db=db
         )
 
         logger.info(f"Chat message processed successfully for session {session_id}")
@@ -70,8 +75,7 @@ async def send_message(
     except Exception as e:
         logger.error(f"Chat processing failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         ) from e
 
 
@@ -79,16 +83,18 @@ async def send_message(
 async def confirm_action(
     request: UserConfirmationResponse,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     try:
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required for portfolio modifications"
+                detail="Authentication required for portfolio modifications",
             )
 
-        logger.info(f"Processing confirmation {request.confirmation_id} for session {request.session_id}")
+        logger.info(
+            f"Processing confirmation {request.confirmation_id} for session {request.session_id}"
+        )
 
         agent = get_chat_agent(db)
 
@@ -96,13 +102,13 @@ async def confirm_action(
             confirmation_id=request.confirmation_id,
             confirmed=request.confirmed,
             user_id=str(current_user.id),
-            db=db
+            db=db,
         )
 
         if not result.success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=result.message if result.message else "Confirmation failed"
+                detail=result.message if result.message else "Confirmation failed",
             )
 
         return result
@@ -112,25 +118,18 @@ async def confirm_action(
     except Exception as e:
         logger.error(f"Confirmation processing failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         ) from e
 
 
 async def stream_chat_response(
-    message: str,
-    session_id: str,
-    user_id: str | None = None,
-    db: Session | None = None
+    message: str, session_id: str, user_id: str | None = None, db: Session | None = None
 ) -> AsyncGenerator[str, None]:
     try:
         agent = get_chat_agent(db)
 
         result = agent.process_message(
-            session_id=session_id,
-            user_message=message,
-            user_id=user_id,
-            _db=db
+            session_id=session_id, user_message=message, user_id=user_id, _db=db
         )
 
         response_text = result.get("message", "")
@@ -141,13 +140,13 @@ async def stream_chat_response(
 
         words = response_text.split()
         for i, word in enumerate(words):
-            delay = 0.1 if word.endswith(('.', '!', '?', ':')) else 0.05
+            delay = 0.1 if word.endswith((".", "!", "?", ":")) else 0.05
 
             chunk_data = {
-                'type': 'token',
-                'content': word + (' ' if i < len(words) - 1 else ''),
-                'index': i,
-                'is_final': i == len(words) - 1
+                "type": "token",
+                "content": word + (" " if i < len(words) - 1 else ""),
+                "index": i,
+                "is_final": i == len(words) - 1,
             }
             yield f"data: {json.dumps(chunk_data)}\n\n"
 
@@ -157,10 +156,7 @@ async def stream_chat_response(
 
     except Exception as e:
         logger.error(f"Streaming failed: {e}")
-        error_data = {
-            'type': 'error',
-            'error': str(e)
-        }
+        error_data = {"type": "error", "error": str(e)}
         yield f"data: {json.dumps(error_data)}\n\n"
 
 
@@ -168,7 +164,7 @@ async def stream_chat_response(
 async def send_message_stream(
     request: ChatMessageRequest,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Send a message to the portfolio chat agent with streaming response.
@@ -190,15 +186,14 @@ async def send_message_stream(
                 "Connection": "keep-alive",
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Headers": "Cache-Control",
-                "X-Accel-Buffering": "no"
-            }
+                "X-Accel-Buffering": "no",
+            },
         )
 
     except Exception as e:
         logger.error(f"Streaming chat processing failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         ) from e
 
 
@@ -206,13 +201,13 @@ async def send_message_stream(
 async def submit_portfolio(
     submission: PortfolioSubmission,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     try:
         if not current_user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required to save portfolio"
+                detail="Authentication required to save portfolio",
             )
 
         chat_agent = get_chat_agent(db)
@@ -223,25 +218,24 @@ async def submit_portfolio(
         if not session_portfolio and not submission.portfolio.assets:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No portfolio found for this session"
+                detail="No portfolio found for this session",
             )
 
-        portfolio_to_save = submission.portfolio if submission.portfolio.assets else session_portfolio
+        portfolio_to_save = (
+            submission.portfolio if submission.portfolio.assets else session_portfolio
+        )
 
         if not portfolio_to_save or not portfolio_to_save.assets:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No valid portfolio with assets found"
+                detail="No valid portfolio with assets found",
             )
 
         saved_count = 0
         failed_count = 0
 
         for asset in portfolio_to_save.assets:
-            result = portfolio_service.add_asset(
-                user_id=current_user.id,
-                asset=asset
-            )
+            result = portfolio_service.add_asset(user_id=current_user.id, asset=asset)
             if result.success:
                 saved_count += 1
             else:
@@ -254,15 +248,14 @@ async def submit_portfolio(
             "portfolio_saved": {
                 "assets_saved": saved_count,
                 "assets_failed": failed_count,
-                "total_assets": len(portfolio_to_save.assets)
-            }
+                "total_assets": len(portfolio_to_save.assets),
+            },
         }
 
         # Run analysis if requested and save was successful
         if submission.analyze_immediately and saved_count > 0:
             analysis_result = portfolio_agent.analyze_portfolio(
-                portfolio=portfolio_to_save,
-                task_type="digest"
+                portfolio=portfolio_to_save, task_type="digest"
             )
 
             if analysis_result["success"]:
@@ -270,10 +263,12 @@ async def submit_portfolio(
                     "digest": analysis_result["response"],
                     "recommendations": analysis_result["recommendations"],
                     "risk_alerts": analysis_result["risk_alerts"],
-                    "execution_time": analysis_result["execution_time"]
+                    "execution_time": analysis_result["execution_time"],
                 }
             else:
-                response["analysis_error"] = analysis_result.get("error", "Analysis failed")
+                response["analysis_error"] = analysis_result.get(
+                    "error", "Analysis failed"
+                )
 
         # Clear the chat session after successful submission
         if saved_count > 0:
@@ -287,15 +282,15 @@ async def submit_portfolio(
     except Exception as e:
         logger.error(f"Portfolio submission failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         ) from e
+
 
 @chat_router.get("/session/{session_id}")
 async def get_session(
     session_id: str,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     """
     Get the current chat session including messages and portfolio state.
@@ -309,7 +304,7 @@ async def get_session(
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found or expired"
+                detail="Session not found or expired",
             )
 
         response = {
@@ -320,12 +315,12 @@ async def get_session(
                     "text": msg.content,
                     "isUser": msg.role == "user",
                     "timestamp": msg.timestamp.isoformat(),
-                    "metadata": msg.metadata
+                    "metadata": msg.metadata,
                 }
                 for i, msg in enumerate(session.messages)
             ],
             "created_at": session.created_at.isoformat(),
-            "last_activity": session.last_activity.isoformat()
+            "last_activity": session.last_activity.isoformat(),
         }
 
         # Add saved portfolio if user is authenticated
@@ -341,15 +336,15 @@ async def get_session(
     except Exception as e:
         logger.error(f"Failed to get session: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         ) from e
+
 
 @chat_router.delete("/session/{session_id}")
 async def clear_session(
     session_id: str,
     current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)]
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Clear a chat session and start fresh."""
     try:
@@ -359,12 +354,11 @@ async def clear_session(
         return {
             "success": True,
             "message": "Session cleared successfully",
-            "session_id": session_id
+            "session_id": session_id,
         }
 
     except Exception as e:
         logger.error(f"Failed to clear session: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         ) from e

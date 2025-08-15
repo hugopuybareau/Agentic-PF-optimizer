@@ -13,6 +13,7 @@ from ..base import Base
 if TYPE_CHECKING:
     from .portfolio import DBPortfolio
 
+
 class DBAsset(Base):
     __tablename__ = "assets"
 
@@ -32,14 +33,19 @@ class DBAsset(Base):
 
     symbol: Mapped[str] = mapped_column(String, index=True, nullable=False)
     asset_type: Mapped[str] = mapped_column(String, nullable=False)
-    quantity: Mapped[float] = mapped_column(Numeric(precision=20, scale=8), nullable=False)
+    quantity: Mapped[float] = mapped_column(
+        Numeric(precision=20, scale=8), nullable=False
+    )
     meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     portfolio: Mapped[DBPortfolio] = relationship(

@@ -20,14 +20,15 @@ class IntentClassifier:
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-10:]:
             conversation_history.append(
-                HumanMessage(content=msg.content) if msg.role == "user"
+                HumanMessage(content=msg.content)
+                if msg.role == "user"
                 else AIMessage(content=msg.content)
             )
 
         messages = prompt_manager.build_messages(
             system_prompt_name="chat-intent-classifier",
             user_content=user_message,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
         )
 
         def _observe(extra: dict):
@@ -36,14 +37,18 @@ class IntentClassifier:
                     "session_id": session.session_id,
                     "message_count": len(session.messages),
                     "user_message": user_message,
-                    **extra
-                    }
-                )
+                    **extra,
+                }
+            )
 
         try:
-            raw_response = self.llm.with_structured_output(IntentClassificationResponse).invoke(messages, timeout=8)
+            raw_response = self.llm.with_structured_output(
+                IntentClassificationResponse
+            ).invoke(messages, timeout=8)
             try:
-                intent_response = IntentClassificationResponse.model_validate(raw_response)
+                intent_response = IntentClassificationResponse.model_validate(
+                    raw_response
+                )
                 intent = intent_response.intent
             except ValidationError as ve:
                 logger.error(f"Intent validation error: {ve}", exc_info=True)

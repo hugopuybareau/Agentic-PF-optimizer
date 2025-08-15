@@ -17,21 +17,24 @@ class EntityExtractor:
         self.llm = llm
 
     @observe(name="extract_entities_tool")
-    def extract_entities(self, session: ChatSession, user_message: str, intent: Intent) -> list[EntityData]:
+    def extract_entities(
+        self, session: ChatSession, user_message: str, intent: Intent
+    ) -> list[EntityData]:
         if intent not in [Intent.ADD_ASSET, Intent.MODIFY_ASSET, Intent.REMOVE_ASSET]:
             return []
 
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-6:]:
             conversation_history.append(
-                HumanMessage(content=msg.content) if msg.role == "user"
+                HumanMessage(content=msg.content)
+                if msg.role == "user"
                 else AIMessage(content=msg.content)
             )
 
         messages = prompt_manager.build_messages(
             system_prompt_name="chat-entity-extractor",
             user_content=user_message,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
         )
 
         def _observe(extra: dict):
@@ -41,15 +44,19 @@ class EntityExtractor:
                     "message_count": len(session.messages),
                     "user_message": user_message,
                     "intent": intent,
-                    **extra
+                    **extra,
                 }
             )
 
         try:
-            raw_response = self.llm.with_structured_output(EntityExtractionResponse).invoke(messages, timeout=8)
+            raw_response = self.llm.with_structured_output(
+                EntityExtractionResponse
+            ).invoke(messages, timeout=8)
             try:
                 entity_response = EntityExtractionResponse.model_validate(raw_response)
-                entity_data = entity_response.primary_entity or (entity_response.entities[0] if entity_response.entities else None)
+                entity_data = entity_response.primary_entity or (
+                    entity_response.entities[0] if entity_response.entities else None
+                )
 
                 # Process all entities and resolve references
                 resolved_entities = []
@@ -60,17 +67,28 @@ class EntityExtractor:
 
                 # Process additional entities from the list
                 for additional_entity in entity_response.entities:
-                    if additional_entity != entity_data:  # Avoid duplicating primary entity
-                        resolved_entity = self.resolve_references(additional_entity, session)
+                    if (
+                        additional_entity != entity_data
+                    ):  # Avoid duplicating primary entity
+                        resolved_entity = self.resolve_references(
+                            additional_entity, session
+                        )
                         resolved_entities.append(resolved_entity)
 
                 if resolved_entities:
-                    logger.info(f"Successfully extracted and resolved {len(resolved_entities)} entities")
-                    _observe({
-                        "entities_extracted": True,
-                        "entity_count": len(resolved_entities),
-                        "entities": [e.model_dump(exclude_none=True) for e in resolved_entities]
-                    })
+                    logger.info(
+                        f"Successfully extracted and resolved {len(resolved_entities)} entities"
+                    )
+                    _observe(
+                        {
+                            "entities_extracted": True,
+                            "entity_count": len(resolved_entities),
+                            "entities": [
+                                e.model_dump(exclude_none=True)
+                                for e in resolved_entities
+                            ],
+                        }
+                    )
                     return resolved_entities
                 else:
                     logger.warning("No entities extracted from response")
@@ -86,9 +104,10 @@ class EntityExtractor:
             _observe({"error": str(e)})
             return []
 
-
     @observe(name="resolve_references")
-    def resolve_references(self, entity_data: EntityData, session: ChatSession) -> EntityData:
+    def resolve_references(
+        self, entity_data: EntityData, session: ChatSession
+    ) -> EntityData:
         # Check if there's a current asset type in session context
         current_asset_type = session.context.get("current_asset_type")
         if current_asset_type and not entity_data.asset_type:
@@ -100,7 +119,7 @@ class EntityExtractor:
             for msg in session.messages[-4:]:
                 if msg.role == "assistant":
                     continue
-                numbers = re.findall(r'\b\d+(?:\.\d+)?\b', msg.content)
+                numbers = re.findall(r"\b\d+(?:\.\d+)?\b", msg.content)
                 recent_amounts.extend(numbers)
 
             # Resolve missing amount/shares from recent conversation

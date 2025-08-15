@@ -40,34 +40,28 @@ class EntityData(BaseModel):
 class EntityExtractionResponse(BaseModel):
     entities: list[EntityData] = Field(
         default_factory=list,
-        description="List of extracted entities from the user message"
+        description="List of extracted entities from the user message",
     )
     primary_entity: EntityData | None = Field(
-        None,
-        description="The main entity being discussed if multiple are found"
+        None, description="The main entity being discussed if multiple are found"
     )
 
 
 class UIHints(BaseModel):
     show_portfolio_summary: bool = Field(
-        default=False,
-        description="Whether to show portfolio summary in UI"
+        default=False, description="Whether to show portfolio summary in UI"
     )
     suggest_asset_types: bool = Field(
-        default=False,
-        description="Whether to suggest asset types to user"
+        default=False, description="Whether to suggest asset types to user"
     )
     current_asset_count: int = Field(
-        default=0,
-        description="Current number of assets in portfolio"
+        default=0, description="Current number of assets in portfolio"
     )
     show_completion_button: bool = Field(
-        default=False,
-        description="Whether to show portfolio completion button"
+        default=False, description="Whether to show portfolio completion button"
     )
     highlight_missing_info: bool = Field(
-        default=False,
-        description="Whether to highlight missing asset information"
+        default=False, description="Whether to highlight missing asset information"
     )
 
 
@@ -83,8 +77,7 @@ class NewsClassificationResponse(BaseModel):
         description="Expected impact level on asset price"
     )
     relevance_score: float = Field(
-        ge=0.0, le=1.0,
-        description="Relevance score between 0-1"
+        ge=0.0, le=1.0, description="Relevance score between 0-1"
     )
 
 
@@ -93,13 +86,14 @@ class AssetAnalysisResponse(BaseModel):
     risk_assessment: str = Field(description="Risk assessment for the asset")
     recommendations: list[str] = Field(description="List of actionable recommendations")
     confidence_score: float = Field(
-        ge=0.0, le=1.0,
-        description="Confidence score in the analysis between 0-1"
+        ge=0.0, le=1.0, description="Confidence score in the analysis between 0-1"
     )
 
 
 class PortfolioDigestResponse(BaseModel):
-    executive_summary: str = Field(description="2-3 sentence overview of portfolio health")
+    executive_summary: str = Field(
+        description="2-3 sentence overview of portfolio health"
+    )
     key_risks: list[str] = Field(description="Top 3-5 portfolio-wide risks")
     opportunities: list[str] = Field(description="2-3 optimization opportunities")
     immediate_actions: list[str] = Field(description="Priority actions to take now")
@@ -107,8 +101,9 @@ class PortfolioDigestResponse(BaseModel):
         description="Overall market sentiment affecting portfolio"
     )
     risk_score: int = Field(
-        ge=1, le=10,
-        description="Overall portfolio risk score (1-10, 10 is highest risk)"
+        ge=1,
+        le=10,
+        description="Overall portfolio risk score (1-10, 10 is highest risk)",
     )
 
 
@@ -122,7 +117,9 @@ class FormAssetData(BaseModel):
     market_value: float | None = Field(None, description="Market value of real estate")
     lender: str | None = Field(None, description="Mortgage lender name")
     balance: float | None = Field(None, description="Outstanding mortgage balance")
-    property_address: str | None = Field(None, description="Property address for mortgage")
+    property_address: str | None = Field(
+        None, description="Property address for mortgage"
+    )
     currency: str | None = Field(None, description="Currency code for cash")
 
 
@@ -134,8 +131,7 @@ class FormSuggestion(BaseModel):
 class PortfolioFormData(BaseModel):
     assets: list[FormAssetData] = Field(description="List of assets in portfolio")
     suggested_additions: list[FormSuggestion] = Field(
-        default_factory=list,
-        description="Suggested asset additions"
+        default_factory=list, description="Suggested asset additions"
     )
 
 
@@ -151,28 +147,17 @@ class FormPreparerResponse(BaseModel):
                 "show_form": True,
                 "form_data": {
                     "assets": [
-                        {
-                            "type": "stock",
-                            "ticker": "AAPL",
-                            "shares": 100
-                        },
-                        {
-                            "type": "cash",
-                            "currency": "USD",
-                            "amount": 5000.0
-                        }
+                        {"type": "stock", "ticker": "AAPL", "shares": 100},
+                        {"type": "cash", "currency": "USD", "amount": 5000.0},
                     ],
                     "suggested_additions": [
                         {
                             "type": "crypto",
-                            "message": "Consider adding cryptocurrency for diversification"
+                            "message": "Consider adding cryptocurrency for diversification",
                         }
-                    ]
+                    ],
                 },
                 "response": "Please review your portfolio details below",
-                "ui_hints": {
-                    "show_portfolio_summary": True,
-                    "current_asset_count": 2
-                }
+                "ui_hints": {"show_portfolio_summary": True, "current_asset_count": 2},
             }
         }

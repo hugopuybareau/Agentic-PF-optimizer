@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 
 from .portfolio import Portfolio
@@ -10,6 +9,7 @@ class ChatMessageRequest(BaseModel):
     message: str
     session_id: str | None = None
 
+
 class ChatResponse(BaseModel):
     message: str
     session_id: str
@@ -20,10 +20,12 @@ class ChatResponse(BaseModel):
     confirmation_request: PortfolioConfirmationRequest | None = None
     requires_confirmation: bool = False
 
+
 class PortfolioSubmission(BaseModel):
     session_id: str
     portfolio: Portfolio
     analyze_immediately: bool = True
+
 
 class UserConfirmationResponse(BaseModel):
     session_id: str

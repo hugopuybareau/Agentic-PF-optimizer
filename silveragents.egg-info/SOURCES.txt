@@ -1,8 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-silveragents.egg-info/PKG-INFO
-silveragents.egg-info/SOURCES.txt
-silveragents.egg-info/dependency_links.txt
-silveragents.egg-info/requires.txt
-silveragents.egg-info/top_level.txt

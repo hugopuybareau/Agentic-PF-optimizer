@@ -12,7 +12,6 @@ from ...models import (
     Intent,
     ResponseGenerationResponse,
 )
-from ...models.assets import Asset, Cash, Crypto, Stock
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +26,13 @@ class ResponseGenerator:
         session: ChatSession,
         user_message: str,
         intent: Intent,
-        entities: list[EntityData]
+        entities: list[EntityData],
     ) -> ResponseGenerationResponse:
         conversation_history: list[BaseMessage] = []
         for msg in session.messages[-8:]:
             conversation_history.append(
-                HumanMessage(content=msg.content) if msg.role == "user"
+                HumanMessage(content=msg.content)
+                if msg.role == "user"
                 else AIMessage(content=msg.content)
             )
 
@@ -45,9 +45,8 @@ class ResponseGenerator:
             system_prompt_name="chat-response-generator",
             user_content=user_message,
             system_variables=prompt_variables,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
         )
-
 
         def _observe(extra: dict):
             langfuse_context.update_current_observation(
@@ -56,12 +55,14 @@ class ResponseGenerator:
                     "message_count": len(session.messages),
                     "user_message": user_message,
                     "intent": intent,
-                    **extra
+                    **extra,
                 }
             )
 
         try:
-            raw_response = self.llm.with_structured_output(ResponseGenerationResponse).invoke(messages, timeout=10)
+            raw_response = self.llm.with_structured_output(
+                ResponseGenerationResponse
+            ).invoke(messages, timeout=10)
             try:
                 result = ResponseGenerationResponse.model_validate(raw_response)
             except ValidationError as ve:
@@ -71,9 +72,7 @@ class ResponseGenerator:
                     response="I encountered an error processing your request. Could you please rephrase?"
                 )
 
-            _observe({
-                "response_length": len(result.response)
-            })
+            _observe({"response_length": len(result.response)})
 
             return result
 

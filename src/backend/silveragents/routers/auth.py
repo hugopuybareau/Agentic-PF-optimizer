@@ -41,10 +41,7 @@ async def register(
 ) -> UserResponse:
     existing = (
         db.query(User)
-        .filter(
-            (User.email == user_data.email)
-            | (User.username == user_data.username)
-        )
+        .filter((User.email == user_data.email) | (User.username == user_data.username))
         .first()
     )
     if existing:
@@ -73,11 +70,8 @@ async def login(
     db: Annotated[Session, Depends(get_db)],
 ) -> Token:
     user = db.query(User).filter(User.email == user_credentials.email).first()
-    if (
-        not user
-        or not verify_password(
-            user_credentials.password, getattr(user, "hashed_password", "")
-        )
+    if not user or not verify_password(
+        user_credentials.password, getattr(user, "hashed_password", "")
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

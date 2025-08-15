@@ -10,19 +10,20 @@ load_dotenv()
 
 os.environ["ENVIRONMENT"] = "test"
 
+
 @pytest.fixture(autouse=True)
 def mock_azure_openai():
     """Mock Azure OpenAI API calls"""
-    with patch('silveragents.agents.chat_agent.AzureChatOpenAI') as mock_llm_class:
+    with patch("silveragents.agents.chat_agent.AzureChatOpenAI") as mock_llm_class:
         mock_instance = MagicMock()
 
         # Mock intent classification responses
         def mock_invoke(messages):
             # Extract content from message list (formatted messages from ChatPromptTemplate)
             content = ""
-            if hasattr(messages, '__iter__'):
+            if hasattr(messages, "__iter__"):
                 for msg in messages:
-                    if hasattr(msg, 'content'):
+                    if hasattr(msg, "content"):
                         content += msg.content + " "
                     else:
                         content += str(msg) + " "
@@ -33,7 +34,9 @@ def mock_azure_openai():
 
             if "that's all" in content:
                 return MagicMock(content="complete_portfolio")
-            elif "100 shares of apple" in content or ("shares" in content and "apple" in content):
+            elif "100 shares of apple" in content or (
+                "shares" in content and "apple" in content
+            ):
                 return MagicMock(content="add_asset")
             elif "remove tesla" in content:
                 return MagicMock(content="remove_asset")
@@ -50,10 +53,14 @@ def mock_azure_openai():
         mock_llm_class.return_value = mock_instance
         yield mock_instance
 
+
 @pytest.fixture
 def mock_entity_extraction():
     """Mock entity extraction"""
-    with patch('silveragents.agents.chat_agent.ChatAgent._extract_entities') as mock_extract:
+    with patch(
+        "silveragents.agents.chat_agent.ChatAgent._extract_entities"
+    ) as mock_extract:
+
         def mock_extraction(state):
             message = state.get("user_message", "")
             entities = {}
@@ -63,7 +70,11 @@ def mock_entity_extraction():
             elif "0.5 Bitcoin" in message:
                 entities = {"type": "crypto", "symbol": "BTC", "amount": 0.5}
             elif "house at 123 Main St is worth $500k" in message:
-                entities = {"type": "real_estate", "address": "123 Main St", "value": 500000}
+                entities = {
+                    "type": "real_estate",
+                    "address": "123 Main St",
+                    "value": 500000,
+                }
 
             state["entities"] = entities
             return state

@@ -8,10 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowUtils:
-
     @observe(name="should_show_form")
     def should_show_form(self, state: ChatAgentState) -> str:
-
         decision = "continue"
         reason = "not_ready"
 
@@ -20,7 +18,16 @@ class WorkflowUtils:
             reason = "confirmation_ready"
         else:
             if state.entities:
-                keywords = ["done", "finish", "complete", "review", "that's all", "that's it", "show me", "see my"]
+                keywords = [
+                    "done",
+                    "finish",
+                    "complete",
+                    "review",
+                    "that's all",
+                    "that's it",
+                    "show me",
+                    "see my",
+                ]
                 user_msg = state.user_message
                 user_msg_str = str(user_msg)
                 if any(keyword in user_msg_str.lower() for keyword in keywords):
@@ -32,7 +39,7 @@ class WorkflowUtils:
                 "decision": decision,
                 "reason": reason,
                 "entity_count": len(state.entities) if state.entities else 0,
-                "has_confirmation_request": bool(state.confirmation_request)
+                "has_confirmation_request": bool(state.confirmation_request),
             }
         )
 

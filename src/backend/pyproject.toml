@@ -49,5 +49,17 @@ dependencies = [
 
 [project.optional-dependencies]
 prod = ["uvicorn[standard]==0.35.*"]
-dev = ["pytest==8.4.*", "pytest-asyncio==1.1.*", "langfuse>=2.60.9,<3.0.0"]
+dev = [
+    "pytest==8.4.1",
+    "pytest-asyncio==1.1.0",
+    "langfuse>=2.60.9,<3.0.0",
+    "ruff==0.12.9",
+    "pre-commit==4.3.0",
+    "mypy==1.17.1",
+    "types-PyYAML==6.0.12.20250809",
+    "types-requests==2.32.4.20250809",
+]
 all = ["silveragents[prod]", "silveragents[dev]"]
+
+[tool.mypy]
+ignore_missing_imports = true

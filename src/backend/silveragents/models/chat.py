@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+
 class ChatMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
@@ -19,9 +20,7 @@ class ChatSession(BaseModel):
     last_activity: datetime = datetime.now()
 
     def add_message(self, role: str, content: str, metadata: dict | None = None):
-        self.messages.append(ChatMessage(
-            role=role,
-            content=content,
-            metadata=metadata or {}
-        ))
+        self.messages.append(
+            ChatMessage(role=role, content=content, metadata=metadata or {})
+        )
         self.last_activity = datetime.now()

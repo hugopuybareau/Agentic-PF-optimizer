@@ -22,24 +22,29 @@ from ..models.assets import Asset
 
 logger = logging.getLogger(__name__)
 
+
 class NewsSearchTool:
     def __init__(self):
-        self.newsapi_key = os.getenv('NEWS_SEARCH_API_KEY')
-        self.bing_subscription_key = os.getenv('BING_SUBSCRIPTION_KEY')
+        self.newsapi_key = os.getenv("NEWS_SEARCH_API_KEY")
+        self.bing_subscription_key = os.getenv("BING_SUBSCRIPTION_KEY")
         self.newsapi_endpoint = "https://newsapi.org/v2/everything"
         self.bing_endpoint = "https://api.bing.microsoft.com/v7.0/news/search"
 
-    def search_newsapi(self, query: str, days_back: int = 7, page_size: int = 10) -> list[NewsItem]:
+    def search_newsapi(
+        self, query: str, days_back: int = 7, page_size: int = 10
+    ) -> list[NewsItem]:
         try:
-            from_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+            from_date = (datetime.now() - timedelta(days=days_back)).strftime(
+                "%Y-%m-%d"
+            )
 
             params = {
-                'q': query,
-                'from': from_date,
-                'sortBy': 'relevancy',
-                'pageSize': page_size,
-                'language': 'en',
-                'apiKey': self.newsapi_key
+                "q": query,
+                "from": from_date,
+                "sortBy": "relevancy",
+                "pageSize": page_size,
+                "language": "en",
+                "apiKey": self.newsapi_key,
             }
 
             response = requests.get(self.newsapi_endpoint, params=params)
@@ -48,14 +53,18 @@ class NewsSearchTool:
             data = response.json()
             news_items = []
 
-            for article in data.get('articles', []):
-                if article.get('title') and article.get('description'):
+            for article in data.get("articles", []):
+                if article.get("title") and article.get("description"):
                     news_item = NewsItem(
-                        title=article['title'],
-                        snippet=article['description'],
-                        url=article['url'],
-                        published_at=datetime.fromisoformat(article['publishedAt'].replace('Z', '+00:00')) if article.get('publishedAt') else None,
-                        source=article.get('source', {}).get('name', 'NewsAPI')
+                        title=article["title"],
+                        snippet=article["description"],
+                        url=article["url"],
+                        published_at=datetime.fromisoformat(
+                            article["publishedAt"].replace("Z", "+00:00")
+                        )
+                        if article.get("publishedAt")
+                        else None,
+                        source=article.get("source", {}).get("name", "NewsAPI"),
                     )
                     news_items.append(news_item)
 
@@ -72,16 +81,9 @@ class NewsSearchTool:
                 logger.warning("Bing subscription key not found, skipping Bing search")
                 return []
 
-            headers = {
-                'Ocp-Apim-Subscription-Key': self.bing_subscription_key
-            }
+            headers = {"Ocp-Apim-Subscription-Key": self.bing_subscription_key}
 
-            params = {
-                'q': query,
-                'count': count,
-                'mkt': 'en-US',
-                'freshness': 'Week'
-            }
+            params = {"q": query, "count": count, "mkt": "en-US", "freshness": "Week"}
 
             response = requests.get(self.bing_endpoint, headers=headers, params=params)
             response.raise_for_status()
@@ -89,17 +91,23 @@ class NewsSearchTool:
             data = response.json()
             news_items = []
 
-            for article in data.get('value', []):
+            for article in data.get("value", []):
                 news_item = NewsItem(
-                    title=article['name'],
-                    snippet=article['description'],
-                    url=article['url'],
-                    published_at=datetime.fromisoformat(article['datePublished'].replace('Z', '+00:00')) if article.get('datePublished') else None,
-                    source='Bing News'
+                    title=article["name"],
+                    snippet=article["description"],
+                    url=article["url"],
+                    published_at=datetime.fromisoformat(
+                        article["datePublished"].replace("Z", "+00:00")
+                    )
+                    if article.get("datePublished")
+                    else None,
+                    source="Bing News",
                 )
                 news_items.append(news_item)
 
-            logger.info(f"Found {len(news_items)} articles from Bing for query: {query}")
+            logger.info(
+                f"Found {len(news_items)} articles from Bing for query: {query}"
+            )
             return news_items
 
         except Exception as e:
@@ -121,8 +129,10 @@ class NewsSearchTool:
             return f"{asset.symbol} cryptocurrency bitcoin price news"
         elif asset.type == "real_estate":
             # Extract city/region from address for broader news
-            address_parts = asset.address.split(',')
-            location = address_parts[-2].strip() if len(address_parts) > 1 else asset.address
+            address_parts = asset.address.split(",")
+            location = (
+                address_parts[-2].strip() if len(address_parts) > 1 else asset.address
+            )
             return f"{location} real estate market housing prices"
         elif asset.type == "mortgage":
             return f"mortgage rates housing market {asset.lender}"
@@ -131,16 +141,16 @@ class NewsSearchTool:
         else:
             return f"{asset.type} financial market news"
 
+
 class ClassificationTool:
     def __init__(self):
         self.llm = AzureChatOpenAI(
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
             azure_deployment="gpt-4o-mini",
-            api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
+            api_key=SecretStr(os.getenv("AZURE_OPENAI_API_KEY") or ""),
             api_version="2025-01-01-preview",
-            temperature=0.1
+            temperature=0.1,
         )
-
 
     def classify_news_item(self, news_item: NewsItem, asset: Asset) -> NewsItem:
         try:
@@ -151,16 +161,22 @@ class ClassificationTool:
 
             # Use prompt manager to build messages with Langfuse prompt
             messages = prompt_manager.build_messages(
-                system_prompt_name="tools-news-classifier",
-                user_content=user_content
+                system_prompt_name="tools-news-classifier", user_content=user_content
             )
 
-            response = cast(NewsClassificationResponse, self.llm.with_structured_output(NewsClassificationResponse).invoke(messages))
+            response = cast(
+                NewsClassificationResponse,
+                self.llm.with_structured_output(NewsClassificationResponse).invoke(
+                    messages
+                ),
+            )
 
             news_item.sentiment = response.sentiment
             news_item.impact = response.impact
             news_item.relevance_score = response.relevance_score
-            logger.debug(f"Classified news: {news_item.title[:50]}... - {response.sentiment}/{response.impact}/{response.relevance_score}")
+            logger.debug(
+                f"Classified news: {news_item.title[:50]}... - {response.sentiment}/{response.impact}/{response.relevance_score}"
+            )
             return news_item
 
         except Exception as e:
@@ -170,18 +186,20 @@ class ClassificationTool:
             news_item.relevance_score = 0.5
             return news_item
 
+
 class AnalysisTool:
     def __init__(self):
         self.llm = AzureChatOpenAI(
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
             azure_deployment="gpt-4o-mini",
-            api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
+            api_key=SecretStr(os.getenv("AZURE_OPENAI_API_KEY") or ""),
             api_version="2025-01-01-preview",
-            temperature=0.3
+            temperature=0.3,
         )
 
-
-    def analyze_asset(self, asset: Asset, classified_news: list[NewsItem]) -> AnalysisResult:
+    def analyze_asset(
+        self, asset: Asset, classified_news: list[NewsItem]
+    ) -> AnalysisResult:
         try:
             asset_key = self._get_asset_key(asset)
 
@@ -195,11 +213,13 @@ class AnalysisTool:
 
             # Use prompt manager to build messages with Langfuse prompt
             messages = prompt_manager.build_messages(
-                system_prompt_name="tools-asset-analyzer",
-                user_content=user_content
+                system_prompt_name="tools-asset-analyzer", user_content=user_content
             )
 
-            response = cast(AssetAnalysisResponse, self.llm.with_structured_output(AssetAnalysisResponse).invoke(messages))
+            response = cast(
+                AssetAnalysisResponse,
+                self.llm.with_structured_output(AssetAnalysisResponse).invoke(messages),
+            )
 
             result = AnalysisResult(
                 asset_key=asset_key,
@@ -208,10 +228,12 @@ class AnalysisTool:
                 sentiment_summary=response.sentiment_summary,
                 risk_assessment=response.risk_assessment,
                 recommendations=response.recommendations,
-                confidence_score=response.confidence_score
+                confidence_score=response.confidence_score,
             )
 
-            logger.info(f"Analysis completed for {asset_key} - Confidence: {response.confidence_score}")
+            logger.info(
+                f"Analysis completed for {asset_key} - Confidence: {response.confidence_score}"
+            )
             return result
 
         except Exception as e:
@@ -224,7 +246,7 @@ class AnalysisTool:
                 sentiment_summary="Insufficient data for analysis.",
                 risk_assessment="Unable to assess risk due to limited information.",
                 recommendations=["Monitor for more news updates"],
-                confidence_score=0.1
+                confidence_score=0.1,
             )
 
     def _get_asset_key(self, asset: Asset) -> str:
@@ -261,7 +283,9 @@ class AnalysisTool:
 
         summary_parts = []
         for item in news_items[:10]:  # Limit to top 10 items
-            sentiment_emoji = {"positive": "📈", "negative": "📉", "neutral": "📊"}.get(item.sentiment or "neutral", "📊")
+            sentiment_emoji = {"positive": "📈", "negative": "📉", "neutral": "📊"}.get(
+                item.sentiment or "neutral", "📊"
+            )
             impact_text = f"[{item.impact.upper()} IMPACT]" if item.impact else ""
 
             summary_parts.append(
@@ -272,16 +296,16 @@ class AnalysisTool:
 
         return "\n".join(summary_parts)
 
+
 class PortfolioSummarizerTool:
     def __init__(self):
         self.llm = AzureChatOpenAI(
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT" or ""),
             azure_deployment="gpt-4o-mini",
-            api_key=SecretStr(os.getenv('AZURE_OPENAI_API_KEY') or ""),
+            api_key=SecretStr(os.getenv("AZURE_OPENAI_API_KEY") or ""),
             api_version="2025-01-01-preview",
-            temperature=0.2
+            temperature=0.2,
         )
-
 
     def create_portfolio_digest(self, analysis_results: list[AnalysisResult]) -> dict:
         try:
@@ -289,25 +313,44 @@ class PortfolioSummarizerTool:
             analysis_summary = self._prepare_analysis_summary(analysis_results)
 
             messages: list[BaseMessage] = [
-                SystemMessage(content="""You are a senior portfolio manager providing a comprehensive portfolio digest.
+                SystemMessage(
+                    content="""You are a senior portfolio manager providing a comprehensive portfolio digest.
 
                 Synthesize the individual asset analyses into the structured response format.
-                Be concise but actionable. Focus on portfolio-level insights, not individual assets."""),
-                HumanMessage(content=f"""Portfolio Analysis Results:
+                Be concise but actionable. Focus on portfolio-level insights, not individual assets."""
+                ),
+                HumanMessage(
+                    content=f"""Portfolio Analysis Results:
                 {analysis_summary}
 
-                Please provide a comprehensive portfolio digest.""")
+                Please provide a comprehensive portfolio digest."""
+                ),
             ]
 
-            response = cast(PortfolioDigestResponse, self.llm.with_structured_output(PortfolioDigestResponse).invoke(messages))
+            response = cast(
+                PortfolioDigestResponse,
+                self.llm.with_structured_output(PortfolioDigestResponse).invoke(
+                    messages
+                ),
+            )
 
             all_recommendations = []
             high_risk_alerts = []
 
             for result in analysis_results:
                 all_recommendations.extend(result.recommendations)
-                if any(keyword in result.risk_assessment.lower() for keyword in ['high risk', 'significant risk', 'warning', 'concern']):
-                    high_risk_alerts.append(f"{result.asset_key}: {result.risk_assessment}")
+                if any(
+                    keyword in result.risk_assessment.lower()
+                    for keyword in [
+                        "high risk",
+                        "significant risk",
+                        "warning",
+                        "concern",
+                    ]
+                ):
+                    high_risk_alerts.append(
+                        f"{result.asset_key}: {result.risk_assessment}"
+                    )
 
             digest = {
                 "executive_summary": response.executive_summary,
@@ -317,11 +360,18 @@ class PortfolioSummarizerTool:
                 "overall_sentiment": response.overall_sentiment,
                 "risk_score": response.risk_score,
                 "total_assets_analyzed": len(analysis_results),
-                "high_confidence_analyses": len([r for r in analysis_results if r.confidence_score > 0.7]),
-                "portfolio_recommendations": list(set(all_recommendations)),  # duplicates
+                "high_confidence_analyses": len(
+                    [r for r in analysis_results if r.confidence_score > 0.7]
+                ),
+                "portfolio_recommendations": list(
+                    set(all_recommendations)
+                ),  # duplicates
                 "risk_alerts": high_risk_alerts,
                 "generated_at": datetime.now().isoformat(),
-                "average_confidence": sum(r.confidence_score for r in analysis_results) / len(analysis_results) if analysis_results else 0
+                "average_confidence": sum(r.confidence_score for r in analysis_results)
+                / len(analysis_results)
+                if analysis_results
+                else 0,
             }
 
             logger.info(f"Portfolio digest created for {len(analysis_results)} assets")
@@ -333,7 +383,7 @@ class PortfolioSummarizerTool:
                 "summary": "Unable to generate portfolio digest due to processing error.",
                 "total_assets_analyzed": len(analysis_results),
                 "error": str(e),
-                "generated_at": datetime.now().isoformat()
+                "generated_at": datetime.now().isoformat(),
             }
 
     def _prepare_analysis_summary(self, analysis_results: list[AnalysisResult]) -> str:

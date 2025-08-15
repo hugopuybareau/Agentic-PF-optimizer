@@ -1,5 +1,4 @@
-# backend/app/agent/tools.py
-
+# type: ignore
 import logging
 import os
 from datetime import datetime, timedelta

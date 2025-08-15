@@ -25,8 +25,14 @@ from ..models import (
     PortfolioConfirmationRequest,
     ResponseGenerationResponse,
     UIHints,
+    ChatResponse,
+    Asset,
+    Cash,
+    Crypto,
+    Mortgage,
+    RealEstate,
+    Stock,
 )
-from ..models.assets import Asset, Cash, Crypto, Mortgage, RealEstate, Stock
 from .modules import (
     EntityExtractor,
     IntentClassifier,
@@ -401,7 +407,7 @@ class ChatAgent:
         user_message: str,
         user_id: str | None = None,
         _db: Session | None = None,
-    ) -> dict:
+    ) -> ChatResponse:
         logger.info(
             f"Processing message for session {session_id}: '{user_message[:5]}{'...' if len(user_message) > 5 else ''}'"
         )
@@ -481,19 +487,18 @@ class ChatAgent:
                 "session_id": session_id,
                 "ui_hints": dump(result.ui_hints),
                 "show_form": result.show_form,
-                **(
-                    {
-                        "confirmation_request": dump(result.confirmation_request),
-                        "requires_confirmation": getattr(
-                            result.confirmation_request, "confirmed", None
-                        )
-                        is None,
-                    }
-                    if result.confirmation_request
-                    else {}
-                ),
-                **({"errors": list(result.errors)} if result.errors else {}),
             }
+            if result.confirmation_request:
+                response |= {
+                    "confirmation_request": dump(result.confirmation_request),
+                    "requires_confirmation": getattr(
+                        result.confirmation_request, "confirmed", None
+                    )
+                    is None,
+                }
+
+            if result.errors:
+                response["errors"] = list(result.errors)
 
             trace.update(
                 output=response,
@@ -514,7 +519,7 @@ class ChatAgent:
                 "Message processed - Confirmation: %s",
                 bool(result.confirmation_request),
             )
-            return response
+            return ChatResponse(**response)
 
         except Exception as e:
             logger.error(
@@ -525,11 +530,13 @@ class ChatAgent:
                 output={"error": str(e)}, metadata={"success": False, "error": str(e)}
             )
 
-            return {
-                "message": "I'm having trouble processing that. Could you try again?",
-                "session_id": session_id,
-                "error": str(e),
-            }
+            return ChatResponse(
+                {
+                    "message": "I'm having trouble processing that. Could you try again?",
+                    "session_id": session_id,
+                    "error": str(e),
+                }
+            )
 
     @observe(name="process_confirmation")
     def process_confirmation(

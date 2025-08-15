@@ -19,6 +19,7 @@ class ChatResponse(BaseModel):
     portfolio_summary: dict | None = None
     confirmation_request: PortfolioConfirmationRequest | None = None
     requires_confirmation: bool = False
+    error: str | None = None
 
 
 class PortfolioSubmission(BaseModel):

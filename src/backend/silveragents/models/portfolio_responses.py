@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -83,4 +83,4 @@ class PortfolioEvent(BaseModel):
     user_id: UUID
     session_id: str | None = None
     data: dict[str, Any]
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

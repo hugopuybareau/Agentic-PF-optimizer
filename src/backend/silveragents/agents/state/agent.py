@@ -1,12 +1,7 @@
-# backend/app/agent/state.py
-
 import operator
 from typing import Annotated, TypedDict
 
-from ...models.assets import Asset
-from ...models.portfolio import Portfolio
-from .analysis import AnalysisResult
-from .news import NewsItem
+from silveragents.models import NewsItem, AnalysisResult, Asset, Portfolio
 
 
 class AgentState(TypedDict):

@@ -1,5 +1,3 @@
-# backend/app/routers/auth.py
-
 import logging
 from datetime import UTC, datetime
 from typing import Annotated
@@ -85,7 +83,7 @@ async def login(
             detail="Inactive user",
         )
 
-    user.last_login = datetime.now(UTC)
+    user.last_login = datetime.now(UTC).isoformat()
     db.commit()
 
     return Token(
@@ -120,7 +118,7 @@ async def refresh(
 async def get_current_user_info(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserResponse:
-    logger.info("AUTH_ME: request received at %s", datetime.utcnow())
+    logger.info("AUTH_ME: request received at %s", datetime.now(UTC).isoformat())
     return current_user
 
 

@@ -1,5 +1,4 @@
-# backend/app/routers/portfolio.py
-
+# type: ignore
 import logging
 from typing import Annotated
 

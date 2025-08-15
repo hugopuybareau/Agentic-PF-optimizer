@@ -10,7 +10,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..agents.chat_agent import ChatAgent
-from ..agents.portfolio_agent import PortfolioAgent
+
+# from ..agents.portfolio_agent import PortfolioAgent
 from ..agents.services import PortfolioService
 from ..auth.dependencies import get_current_user_optional
 from ..db.base import get_db
@@ -19,14 +20,13 @@ from ..models import (
     ChatMessageRequest,
     ChatResponse,
     PortfolioActionResult,
-    PortfolioSubmission,
     UserConfirmationResponse,
 )
 
 logger = logging.getLogger(__name__)
 
 chat_agent = None
-portfolio_agent = None
+# portfolio_agent = None
 
 
 def get_chat_agent(db: Session | None = None):
@@ -36,11 +36,11 @@ def get_chat_agent(db: Session | None = None):
     return chat_agent
 
 
-def get_portfolio_agent():
-    global portfolio_agent
-    if portfolio_agent is None:
-        portfolio_agent = PortfolioAgent()
-    return portfolio_agent
+# def get_portfolio_agent():
+#     global portfolio_agent
+#     if portfolio_agent is None:
+#         portfolio_agent = PortfolioAgent()
+#     return portfolio_agent
 
 
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
@@ -70,7 +70,7 @@ async def send_message(
         )
 
         logger.info(f"Chat message processed successfully for session {session_id}")
-        return ChatResponse(**result)
+        return result
 
     except Exception as e:
         logger.error(f"Chat processing failed: {e}", exc_info=True)
@@ -128,9 +128,10 @@ async def stream_chat_response(
     try:
         agent = get_chat_agent(db)
 
-        result = agent.process_message(
+        pydantic_result = agent.process_message(
             session_id=session_id, user_message=message, user_id=user_id, _db=db
         )
+        result = pydantic_result.model_dump(mode="json")
 
         response_text = result.get("message", "")
 
@@ -197,93 +198,93 @@ async def send_message_stream(
         ) from e
 
 
-@chat_router.post("/submit-portfolio")
-async def submit_portfolio(
-    submission: PortfolioSubmission,
-    current_user: Annotated[User | None, Depends(get_current_user_optional)],
-    db: Annotated[Session, Depends(get_db)],
-):
-    try:
-        if not current_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required to save portfolio",
-            )
-
-        chat_agent = get_chat_agent(db)
-        portfolio_agent = get_portfolio_agent()
-        portfolio_service = PortfolioService(db)
-
-        session_portfolio = chat_agent.get_session_portfolio(submission.session_id)
-        if not session_portfolio and not submission.portfolio.assets:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No portfolio found for this session",
-            )
-
-        portfolio_to_save = (
-            submission.portfolio if submission.portfolio.assets else session_portfolio
-        )
-
-        if not portfolio_to_save or not portfolio_to_save.assets:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No valid portfolio with assets found",
-            )
-
-        saved_count = 0
-        failed_count = 0
-
-        for asset in portfolio_to_save.assets:
-            result = portfolio_service.add_asset(user_id=current_user.id, asset=asset)
-            if result.success:
-                saved_count += 1
-            else:
-                failed_count += 1
-                logger.error(f"Failed to save asset: {asset}")
-
-        response = {
-            "success": saved_count > 0,
-            "session_id": submission.session_id,
-            "portfolio_saved": {
-                "assets_saved": saved_count,
-                "assets_failed": failed_count,
-                "total_assets": len(portfolio_to_save.assets),
-            },
-        }
-
-        # Run analysis if requested and save was successful
-        if submission.analyze_immediately and saved_count > 0:
-            analysis_result = portfolio_agent.analyze_portfolio(
-                portfolio=portfolio_to_save, task_type="digest"
-            )
-
-            if analysis_result["success"]:
-                response["analysis"] = {
-                    "digest": analysis_result["response"],
-                    "recommendations": analysis_result["recommendations"],
-                    "risk_alerts": analysis_result["risk_alerts"],
-                    "execution_time": analysis_result["execution_time"],
-                }
-            else:
-                response["analysis_error"] = analysis_result.get(
-                    "error", "Analysis failed"
-                )
-
-        # Clear the chat session after successful submission
-        if saved_count > 0:
-            chat_agent.clear_session(submission.session_id)
-            logger.info(f"Portfolio saved and session cleared: {submission.session_id}")
-
-        return response
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Portfolio submission failed: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        ) from e
+# @chat_router.post("/submit-portfolio")
+# async def submit_portfolio(
+#     submission: PortfolioSubmission,
+#     current_user: Annotated[User | None, Depends(get_current_user_optional)],
+#     db: Annotated[Session, Depends(get_db)],
+# ):
+#     try:
+#         if not current_user:
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail="Authentication required to save portfolio",
+#             )
+#
+#         chat_agent = get_chat_agent(db)
+#         portfolio_agent = get_portfolio_agent()
+#         portfolio_service = PortfolioService(db)
+#
+#         session_portfolio = chat_agent.get_session_portfolio(submission.session_id)
+#         if not session_portfolio and not submission.portfolio.assets:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="No portfolio found for this session",
+#             )
+#
+#         portfolio_to_save = (
+#             submission.portfolio if submission.portfolio.assets else session_portfolio
+#         )
+#
+#         if not portfolio_to_save or not portfolio_to_save.assets:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail="No valid portfolio with assets found",
+#             )
+#
+#         saved_count = 0
+#         failed_count = 0
+#
+#         for asset in portfolio_to_save.assets:
+#             result = portfolio_service.add_asset(user_id=current_user.id, asset=asset)
+#             if result.success:
+#                 saved_count += 1
+#             else:
+#                 failed_count += 1
+#                 logger.error(f"Failed to save asset: {asset}")
+#
+#         response = {
+#             "success": saved_count > 0,
+#             "session_id": submission.session_id,
+#             "portfolio_saved": {
+#                 "assets_saved": saved_count,
+#                 "assets_failed": failed_count,
+#                 "total_assets": len(portfolio_to_save.assets),
+#             },
+#         }
+#
+#         # Run analysis if requested and save was successful
+#         if submission.analyze_immediately and saved_count > 0:
+#             analysis_result = portfolio_agent.analyze_portfolio(
+#                 portfolio=portfolio_to_save, task_type="digest"
+#             )
+#
+#             if analysis_result["success"]:
+#                 response["analysis"] = {
+#                     "digest": analysis_result["response"],
+#                     "recommendations": analysis_result["recommendations"],
+#                     "risk_alerts": analysis_result["risk_alerts"],
+#                     "execution_time": analysis_result["execution_time"],
+#                 }
+#             else:
+#                 response["analysis_error"] = analysis_result.get(
+#                     "error", "Analysis failed"
+#                 )
+#
+#         # Clear the chat session after successful submission
+#         if saved_count > 0:
+#             chat_agent.clear_session(submission.session_id)
+#             logger.info(f"Portfolio saved and session cleared: {submission.session_id}")
+#
+#         return response
+#
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Portfolio submission failed: {e}", exc_info=True)
+#         raise HTTPException(
+#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+#         ) from e
 
 
 @chat_router.get("/session/{session_id}")

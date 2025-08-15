@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .logs.config import setup_logging
+from contextlib import asynccontextmanager
 
 from .db import models  # noqa: F401
 from .db.base import Base, engine
@@ -60,8 +61,17 @@ async def health_check():
     return {"status": "healthy", "service": "portfolio-optimizer-backend"}
 
 
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     Base.metadata.create_all(bind=engine)
     logger = logging.getLogger(__name__)
     logger.info("App startup ok")
+
+    yield  # The app will run while paused here
+
+    # Shutdown (optional)
+    # logger.info("App shutdown ok")
+
+
+app = FastAPI(lifespan=lifespan)

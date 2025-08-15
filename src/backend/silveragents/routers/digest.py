@@ -1,5 +1,4 @@
-# backend/app/routers/digest.py
-
+# type: ignore
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException

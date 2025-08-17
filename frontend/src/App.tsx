@@ -12,13 +12,13 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Pages
-import LoginPage from "@/pages/LoginPage";
-import Landing from "@/pages/Landing";
-import Portfolio from "@/pages/Portfolio";
-import Chat from "@/pages/Chat";
-import Alerts from "@/pages/Alerts";
-import Features from "@/pages/Features";
-import NotFound from "@/pages/NotFound";
+import LoginPage from "@/pages/Login/LoginPage";
+import Landing from "@/pages/Landing/Landing";
+import Portfolio from "@/pages/Portfolio/Portfolio";
+import Chat from "@/pages/Chat/Chat";
+import Alerts from "@/pages/Alterts/Alerts";
+import Features from "@/pages/Features/Features";
+import NotFound from "@/pages/NotFound/NotFound";
 
 const queryClient = new QueryClient();
 
